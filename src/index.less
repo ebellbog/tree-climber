@@ -1,0 +1,45 @@
+@numRows: 4;
+@numCols: 5;
+@squareSize: 40px;
+
+@darkSquare: black;
+@lightSquare: white;
+@highlight: 30%;
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #888;
+}
+
+.board {
+    display: inline-grid;
+    grid-template-columns: repeat(@numCols, 1fr);
+    grid-template-rows: repeat(@numRows, 1fr);
+
+    width: @numCols * @squareSize;
+    height: @numRows * @squareSize;
+
+    margin: 16px;
+    border-radius: @squareSize / 4;
+    overflow: hidden;
+
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+
+    .square {
+        &:nth-child(odd) {
+            background-color: @darkSquare;
+            &:hover {
+                background-color: lighten(@darkSquare, @highlight);
+            }
+        }
+        &:nth-child(even) {
+            background-color: @lightSquare;
+            &:hover {
+                background-color: darken(@lightSquare, @highlight);
+            }
+        }
+        cursor: pointer;
+    }
+}
