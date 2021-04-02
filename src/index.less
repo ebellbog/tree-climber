@@ -2,15 +2,15 @@
 @numCols: 5;
 @squareSize: 40px;
 
-@darkSquare: black;
-@lightSquare: white;
-@highlight: 30%;
+@darkSquare: #916647;
+@lightSquare: #e3bb9d;
+@highlight: 15%;
 
 body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #888;
+    background-color: lighten(lightslategray, 15%);
 }
 
 .board {
@@ -22,12 +22,15 @@ body {
     height: @numRows * @squareSize;
 
     margin: 16px;
-    border-radius: @squareSize / 4;
+    border-radius: @squareSize / 5;
     overflow: hidden;
 
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 
     .square {
+        cursor: pointer;
+        text-align: center;
+
         &:nth-child(odd) {
             background-color: @darkSquare;
             &:hover {
@@ -40,6 +43,17 @@ body {
                 background-color: darken(@lightSquare, @highlight);
             }
         }
-        cursor: pointer;
+
+        .fa-chess-bishop {
+            font-size: @squareSize / 1.75;
+            height: @squareSize;
+
+            &.black {
+                color: black;
+            }
+            &.white {
+                color: white;
+            }
+        }
     }
 }
