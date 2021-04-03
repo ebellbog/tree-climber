@@ -1,6 +1,5 @@
 import './index.less';
 
-// Important: keep in sync with values in index.less
 const NUM_ROWS = 4; 
 const NUM_COLS = 5;
 
@@ -10,15 +9,18 @@ $(document).ready(() => {
 
 function setupBoards() {
     const $board = $('.board');
-    for (let i = 0; i < NUM_ROWS * NUM_COLS; i++) {
-        const $square = $('<div></div>').addClass('square');
-        const $bishop = $('<i class="fa fa-chess-bishop"></i>');
+    const $bishop = $('<i class="fa fa-chess-bishop"></i>');
 
-        const colIdx = i % NUM_COLS;
-        if (colIdx === 0 || colIdx === NUM_COLS - 1) {
-            $square.append($bishop.clone().addClass(colIdx === 0 ? 'black' : 'white'));
+    for (let i = 0; i < NUM_ROWS; i++) {
+        const $row = $('<div></div>').addClass('board-row');
+        for (let j = 0; j < NUM_COLS; j++) {
+            const $square = $('<div></div>').addClass('square');
+            const colIdx = j % NUM_COLS;
+            if (colIdx === 0 || colIdx === NUM_COLS - 1) {
+                $square.append($bishop.clone().addClass(colIdx === 0 ? 'black' : 'white'));
+            }
+            $row.append($square);
         }
-        $board.append($square);
+        $board.append($row);
     }
-
 }

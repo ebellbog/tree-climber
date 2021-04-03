@@ -9,7 +9,6 @@
 body {
     margin: 16px 0 0 0;
     padding: 0;
-    overflow: hidden;
     background-color: #7c3636;
 }
 
@@ -21,12 +20,7 @@ body {
 }
 
 .board {
-    display: inline-grid;
-    grid-template-columns: repeat(@numCols, 1fr);
-    grid-template-rows: repeat(@numRows, 1fr);
-
-    width: @numCols * @squareSize;
-    height: @numRows * @squareSize;
+    display: inline-block;
 
     margin: 16px;
     border-radius: @squareSize / 5;
@@ -34,26 +28,42 @@ body {
 
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 
-    .square {
-        cursor: pointer;
-        text-align: center;
+    &:hover {
+        box-shadow: 0 0 0 3px white;
+    }
 
-        &:nth-child(odd) {
-            background-color: @darkSquare;
-            &:hover {
-                background-color: lighten(@darkSquare, @highlight);
-            }
+    // Checkered colors, independent of board size
+    .board-row:nth-child(odd) .square:nth-child(odd),
+    .board-row:nth-child(even) .square:nth-child(even) {
+        background-color: @darkSquare;
+        &:hover {
+            background-color: lighten(@darkSquare, @highlight);
         }
-        &:nth-child(even) {
-            background-color: @lightSquare;
-            &:hover {
-                background-color: darken(@lightSquare, @highlight);
-            }
+    }
+    .board-row:nth-child(odd) .square:nth-child(even),
+    .board-row:nth-child(even) .square:nth-child(odd)  {
+        background-color: @lightSquare;
+        &:hover {
+            background-color: darken(@lightSquare, @highlight);
         }
+    }
+
+    .square {
+        position: relative;
+        display: inline-block;
+
+        width: @squareSize;
+        height: @squareSize;
+
+        cursor: pointer;
 
         .fa-chess-bishop {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+
             font-size: @squareSize / 1.75;
-            height: @squareSize;
 
             &.black {
                 color: black;
