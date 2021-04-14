@@ -15,20 +15,23 @@ const boards = [];
 /* Initialization & event hooks */
 
 $(document).ready(() => {
-    const $firstBoard = createBoard();
-    $('.row').append($firstBoard);
+    const firstBoard = new BishopsBoard(NUM_ROWS, NUM_COLS);
+    boards.push(firstBoard.$board);
+    $('.row').append(firstBoard.$board);
 
     $('body').on('click', '.board', ({currentTarget}) => {
         const $board = $(currentTarget);
         const $row = $board.closest('.row');
         const srcId = parseInt($board.attr('id'));
 
-        const $newBoard = createBoard().attr('data-src', srcId)
+        const newBoard = new BishopsBoard(NUM_ROWS, NUM_COLS, srcId);
+        newBoard.insertBoard($row);
+        boards.push(newBoard.$board);
 
-        insertBoard($newBoard, $row);
         connectBoards();
     });
 
+    // Can't listen via jQuery because scroll events don't bubble up
     document.addEventListener('scroll', ({target}) => {
         if ($(target).hasClass('row')) {
             connectBoards();
@@ -36,40 +39,46 @@ $(document).ready(() => {
     }, true);
 
     connectBoards();
-
-    // $('.square').on('click', ({currentTarget}) => {
-    //     const $square = $(currentTarget);
-    //     const colIdx = $square.data('col-idx');
-    //     const rowIdx = $square.closest('.board-row').data('row-idx');
-    //     console.log(rowIdx, colIdx);
-    // });
-
 });
 
 /* DOM methods */
 
-function createBoard() {
-    const $board = $(`<div class="board" id=${boards.length}></div>`);
-    const $bishop = $('<i class="fa fa-chess-bishop"></i>');
-
-    for (let i = 0; i < NUM_ROWS; i++) {
-        const $row = $('<div></div>').attr('data-row-idx', i).addClass('board-row');
-        for (let j = 0; j < NUM_COLS; j++) {
-            const $square = $('<div></div>').attr('data-col-idx', j).addClass('square');
-            const colIdx = j % NUM_COLS;
-            if (colIdx === 0 || colIdx === NUM_COLS - 1) {
-                $square.append($bishop.clone().addClass(colIdx === 0 ? 'black' : 'white'));
-            }
-            $row.append($square);
+class BishopsBoard {
+    constructor(rows, cols, srcId) {
+        this.initBoard(rows, cols);
+        if (srcId !== null) {
+            this.$board.attr('data-src', srcId);
         }
-        $board.append($row);
+
+        this.game = new BishopsGame(rows, cols);
+        this.renderGame();
+
+        this.hookEvents();
     }
 
-    boards.push($board);
-    return $board;
-}
+    initBoard(rows, cols) {
+        this.$board = $(`<div class="board" id=${boards.length}></div>`);
 
-function insertBoard($newBoard, $row) {
+        for (let r = 0; r < rows; r++) {
+            const $row = $('<div></div>').attr('data-row-idx', r).addClass('board-row');
+            for (let c = 0; c < cols; c++) {
+                const $square = $('<div></div>').attr('data-col-idx', c).addClass('square');
+                $row.append($square);
+            }
+            this.$board.append($row);
+        }
+    }
+
+    hookEvents() {
+        this.$board.on('mouseover', '.square', ({currentTarget}) => {
+            const $square = $(currentTarget);
+            const colIdx = $square.data('col-idx');
+            const rowIdx = $square.closest('.board-row').data('row-idx');
+            console.log(rowIdx, colIdx);
+        });
+    }
+
+    insertBoard($row) {
         let $nextRow = $row.next('.row');
         if (!$nextRow.length) {
             $nextRow = $('<div class="row"></div>');
@@ -82,20 +91,39 @@ function insertBoard($newBoard, $row) {
             const srcIds = $srcBoards.toArray().map((board) => $(board).attr('id'));
 
             const getSrcIdx = ($board) => srcIds.indexOf($board.attr('data-src'));
-            const newSrcIdx = getSrcIdx($newBoard);
+            const srcIdx = getSrcIdx(this.$board);
 
             $rowBoards.each((idx, board) => {
                 const $board = $(board);
-                if (newSrcIdx < getSrcIdx($board)) {
-                    $board.before($newBoard);
+                if (srcIdx < getSrcIdx($board)) {
+                    $board.before(this.$board);
                     return false;
                 } else if (idx === $rowBoards.length - 1) {
-                    $nextRow.append($newBoard);
+                    $nextRow.append(this.$board);
                 }
             });
         } else {
-            $nextRow.append($newBoard);
+            $nextRow.append(this.$board);
         }
+    }
+
+    renderGame() {
+        const $bishop = $('<i class="fa fa-chess-bishop"></i>');
+        const {gameState, rows, cols} = this.game;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const {occupiedBy} = gameState[r][c];
+                if (occupiedBy) {
+                    this.getSquare(r, c).append($bishop.clone().addClass(occupiedBy));
+                }
+            }
+        }
+    }
+
+    getSquare(row, col) {
+        return this.$board.find(`[data-row-idx="${row}"]`).find(`[data-col-idx="${col}"]`);
+    }
 }
 
 /* Draw methods */
@@ -145,4 +173,68 @@ function connectBoards() {
             drawBezier(getBoardBottom($srcBoard), getBoardTop($board));
         }
     });
+}
+
+/* Game logic */
+
+class BishopsGame {
+    constructor(rows, cols) {
+        this.rows = rows;
+        this.cols = cols;
+
+        this.initializeGame();
+    }
+
+    initializeGame() {
+        this.gameState = [];
+        for (let r = 0; r < this.rows; r++) {
+            const row = [];
+            for (let c = 0; c < this.cols; c++) {
+                row.push({
+                    attackedBy: {
+                        white: false,
+                        black: false
+                    },
+                    moveOptions: [],
+                    occupiedBy: (c === 0) ? 'black' : (c === this.cols - 1) ? 'white' : null
+                });
+            }
+            this.gameState.push(row);
+        }
+    };
+
+    analyzeGame() {
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const square = this.gameState[r][c];
+                const {occupiedBy} = square;
+                if (occupiedBy) {
+                    square.moveOptions = this.getBishopMoves(r, c);
+                    for (let m = 0; m < square.moveOptions.length; m++) {
+                        const [mR, mC] = square.moveOptions[m];
+                        this.gameState[mR][mC].attackedBy[occupiedBy] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    getBishopMoves(row, col) {
+        const moves = [];
+        for (let c = 0; c < this.cols; c++) {
+            if (c === col) continue;
+            const dist = Math.abs(col - c);
+            if (row - dist >= 0) {
+                moves.push([row - dist, c]);
+            }
+            if (row + dist < this.rows) {
+                moves.push([row + dist, c]);
+            }
+        }
+        return moves;
+    }
+
+    getHash() {
+        return this.gameState.map((row) => row.map((square) => square.occupiedBy || '-').join('')).join('');
+    }
 }
