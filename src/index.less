@@ -4,6 +4,9 @@
 @lightSquare: #e3bb9d;
 @highlight: 15%;
 
+@validColor: limegreen;
+@invalidColor: red;
+
 @bgColor: #7c3636;
 
 body {
@@ -86,28 +89,35 @@ body {
         }
 
         &.valid-move {
-            background-color: limegreen!important;
+            background-color: @validColor!important;
+            cursor: pointer;
+
+            &:hover {
+                box-shadow: inset 0 0 0 3px white;
+            }
         }
         &.invalid-move {
-            background-color: red!important;
+            background-color: @invalidColor!important;
         }
 
-        &:hover {
+        &:hover, &.selected {
             .fa-chess-bishop {
                 font-size: @squareSize / 1.4;
             }
-            // &.black {
-            //     path {
-            //         stroke: fade(white, 80%);
-            //         stroke-width: @squareSize / 1.3;
-            //     }
-            // }
-            // &.white {
-            //     path {
-            //         stroke: fade(black, 70%);
-            //         stroke-width: @squareSize / 1.2;
-            //     }
-            // }
+        }
+        &.selected {
+            &.black {
+                path {
+                    stroke: fade(white, 80%);
+                    stroke-width: @squareSize / 1.3;
+                }
+            }
+            &.white {
+                path {
+                    stroke: fade(black, 70%);
+                    stroke-width: @squareSize / 1.2;
+                }
+            }
         }
     }
 }

@@ -15,9 +15,8 @@ const boards = [];
 /* Initialization & event hooks */
 
 $(document).ready(() => {
-    const firstBoard = new BishopsBoard(NUM_ROWS, NUM_COLS);
-    boards.push(firstBoard.$board);
-    $('.row').append(firstBoard.$board);
+    const firstBoard = new BishopsBoard({rows: NUM_ROWS, cols: NUM_COLS});
+    firstBoard.insertBoard($('.row'));
 
     document.addEventListener('scroll', ({target}) => { // Can't listen via jQuery because scroll events don't bubble up
         if ($(target).hasClass('row')) {
@@ -30,20 +29,29 @@ $(document).ready(() => {
 /* DOM methods */
 
 class BishopsBoard {
-    constructor(rows, cols, srcId) {
+    constructor({rows, cols, src}) {
+        this.selectedSquare = null;
         this.$board = null;
 
-        this.initBoard(rows, cols);
-        if (srcId !== null) {
-            this.$board.attr('data-src', srcId);
+
+        if (src) {
+            const {board, move} = src;
+            const {game} = board;
+
+            this.initBoard(game.rows, game.cols);
+            this.$board.attr('data-src', board.id);
+
+            this.game = new BishopsGame({src: {game, move}});
+        } else {
+            this.initBoard(rows, cols);
+            this.game = new BishopsGame({rows, cols});
         }
 
-        this.game = new BishopsGame(rows, cols);
         this.game.analyzeGame();
-
         this.renderGame();
 
         this.hookEvents();
+        boards.push(this.$board);
     }
 
     initBoard(rows, cols) {
@@ -62,33 +70,64 @@ class BishopsBoard {
     hookEvents() {
         this.$board
             .on('mouseover', '.square', ({currentTarget}) => {
-                const $square = $(currentTarget);
-                const col = $square.data('col');
-                const row = $square.closest('.board-row').data('row');
-
-                const {moveOptions, occupiedBy} = this.game.state[row][col];
-                moveOptions.forEach(([r, c]) => {
-                    const $moveSquare = this.getSquare(r, c);
-                    const {attackedBy} = this.game.state[r][c];
-                    $moveSquare.addClass(attackedBy[oppositeColor(occupiedBy)] ? 'invalid-move' : 'valid-move');
-                });
+                if (this.selectedSquare) {
+                    return;
+                }
+                this.highlightMoves($(currentTarget));
             })
             .on('mouseout', '.square', () => {
-                this.$board.find('.valid-move, .invalid-move').removeClass('valid-move invalid-move');
+                if (this.selectedSquare) {
+                    return;
+                }
+                this.clearSelection();
             })
-            .on('click', () => {
-                const $row = this.$board.closest('.row');
-                const srcId = parseInt(this.$board.attr('id'));
+            .on('click', '.square.white, .square.black', (e) => {
+                e.stopPropagation();
+                this.clearSelection();
 
-                const newBoard = new BishopsBoard(this.game.rows, this.game.cols, srcId);
+                const $square = $(e.currentTarget);
+                $square.addClass('selected');
+                this.selectedSquare = this.getCoordinates($square);
+
+                this.highlightMoves($square);
+            })
+            .on('click', '.valid-move', ({currentTarget}) => {
+                const destSquare = this.getCoordinates($(currentTarget));
+                const move = [this.selectedSquare, destSquare];
+
+                const newBoard = new BishopsBoard({src: {board: this, move}});
+
+                const $row = this.$board.closest('.row');
                 newBoard.insertBoard($row);
-                boards.push(newBoard.$board);
 
                 connectBoards();
-            });
+            })
+
+        $('body').on('click', () => this.clearSelection());
+    }
+
+    clearSelection() {
+        this.selectedSquare = null;
+        this.$board.find('.valid-move, .invalid-move, .selected').removeClass('valid-move invalid-move selected');
+    }
+
+    highlightMoves($square) {
+        const [row, col] = this.getCoordinates($square);
+
+        const {moveOptions, occupiedBy} = this.game.state[row][col];
+        moveOptions.forEach(([r, c]) => {
+            const $moveSquare = this.getSquare(r, c);
+            const {attackedBy} = this.game.state[r][c];
+            $moveSquare.addClass(attackedBy[oppositeColor(occupiedBy)] ? 'invalid-move' : 'valid-move');
+        });
     }
 
     insertBoard($row) {
+        // Inserting the first board
+        if (!$row.children().length) {
+            return $row.append(this.$board);
+        }
+
         let $nextRow = $row.next('.row');
         if (!$nextRow.length) {
             $nextRow = $('<div class="row"></div>');
@@ -134,15 +173,31 @@ class BishopsBoard {
     getSquare(row, col) {
         return this.$board.find(`[data-row="${row}"]`).find(`[data-col="${col}"]`);
     }
+
+    getCoordinates($square) {
+        const col = $square.data('col');
+        const row = $square.closest('.board-row').data('row');
+        return [row, col];
+    }
+
+    get id() {
+        return this.$board.attr('id');
+    }
 }
 
 /* Game logic */
 
 class BishopsGame {
-    constructor(rows, cols) {
+    constructor({rows, cols, src}) {
         this.state = [];
 
-        this.initializeGame(rows, cols);
+        if (src) {
+            const {game, move} = src;
+            this.state = JSON.parse(JSON.stringify(game.state));
+            this.applyMove(move);
+        } else {
+            this.initializeGame(rows, cols);
+        }
     }
 
     initializeGame(rows, cols) {
@@ -168,7 +223,7 @@ class BishopsGame {
                 const square = this.state[r][c];
                 const {occupiedBy} = square;
                 if (occupiedBy) {
-                    square.moveOptions = this.getBishopMoves(r, c);
+                    square.moveOptions = this.findBishopMoves(r, c);
                     for (let m = 0; m < square.moveOptions.length; m++) {
                         const [mR, mC] = square.moveOptions[m];
                         this.state[mR][mC].attackedBy[occupiedBy] = true;
@@ -178,25 +233,49 @@ class BishopsGame {
         }
     }
 
-    getBishopMoves(row, col) {
+    findBishopMoves(row, col) {
+        const isInBounds = (row, col) => {
+            return (
+                row >= 0 && row < this.rows &&
+                col >= 0 && col < this.cols
+            );
+        }
+
         const moves = [];
-        for (let c = 0; c < this.cols; c++) {
-            if (c === col) continue;
-            const dist = Math.abs(col - c);
-            if (row - dist >= 0) {
-                moves.push([row - dist, c]);
-            }
-            if (row + dist < this.rows) {
-                moves.push([row + dist, c]);
+
+        // Search outwards, breaking when an obstacle is encountered (or bounds are exceeded)
+        for (let rowDirection = -1; rowDirection < 2; rowDirection += 2) {
+            for (let colDirection = -1; colDirection < 2; colDirection += 2) {
+                for (let dist = 1; dist < Math.max(this.rows, this.cols); dist++) {
+                    const newRow = row + (dist * rowDirection);
+                    const newCol = col + (dist * colDirection);
+                    if (isInBounds(newRow, newCol) && !this.state[newRow][newCol].occupiedBy) {
+                        moves.push([newRow, newCol]);
+                    } else {
+                        break;
+                    }
+                }
             }
         }
+
         return moves;
     }
 
-    getHash() {
-        return this.state.map((row) => row.map((square) => square.occupiedBy || '-').join('')).join('');
+    applyMove(move) {
+        const [[r1, c1], [r2, c2]] = move;
+        const {occupiedBy} = this.state[r1][c1];
+        Object.assign(this.state[r1][c1], {
+            occupiedBy: null,
+            moveOptions: []
+        });
+        Object.assign(this.state[r2][c2], {
+            occupiedBy
+        });
     }
 
+    get hash() {
+        return this.state.map((row) => row.map((square) => square.occupiedBy || '-').join('')).join('');
+    }
     get rows() {
         return this.state.length;
     }
