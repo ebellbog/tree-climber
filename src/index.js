@@ -5,12 +5,18 @@ import './index.less';
 const NUM_ROWS = 4; 
 const NUM_COLS = 5;
 
-const MARGIN = 10;
+const MARGIN = 12;
+
+const LABEL_WIDTH = 78;
+const LABEL_HEIGHT = 24;
+const LABEL_RADIUS = 12;
 
 /* Globals */
 
-const $curves = $('#curves');
+const $svgLayer = $('#svg-layer');
+
 const boards = [];
+const connections = [];
 
 /* Initialization & event hooks */
 
@@ -104,15 +110,16 @@ class BishopsBoard {
 
                 const $square = $(e.currentTarget);
                 $square.addClass('selected');
-                this.selectedSquare = this.getCoordinates($square);
+                this.selectedSquare = this.getCoords($square);
 
                 this.highlightMoves($square);
             })
             .on('click', '.valid-move', ({currentTarget}) => {
-                const destSquare = this.getCoordinates($(currentTarget));
+                const destSquare = this.getCoords($(currentTarget));
                 const move = [this.selectedSquare, destSquare];
 
                 const newBoard = new BishopsBoard({src: {board: this, move}});
+                connections.push({startBoard: this, endBoard: newBoard, move});
 
                 const $row = this.$board.closest('.row');
                 newBoard.insertBoard($row);
@@ -129,7 +136,7 @@ class BishopsBoard {
     }
 
     highlightMoves($square) {
-        const [row, col] = this.getCoordinates($square);
+        const [row, col] = this.getCoords($square);
 
         const {moveOptions, occupiedBy} = this.game.state[row][col];
         moveOptions.forEach(([r, c]) => {
@@ -191,10 +198,16 @@ class BishopsBoard {
         return this.$board.find(`[data-row="${row}"]`).find(`[data-col="${col}"]`);
     }
 
-    getCoordinates($square) {
+    getCoords($square) {
         const col = $square.data('col');
         const row = $square.closest('.board-row').data('row');
         return [row, col];
+    }
+
+    formatCoords(r, c) {
+        const formattedRow = String.fromCharCode(96 + this.game.rows - r);
+        const formattedCol = this.game.cols - c;
+        return `${formattedRow}${formattedCol}`;
     }
 
     get id() {
@@ -304,25 +317,51 @@ class BishopsGame {
 /* Draw methods */
 
 function clearSvg() {
-    $curves.find('path').remove();
+    $svgLayer.empty();
+}
+
+function createSvg(element) {
+    return document.createElementNS('http://www.w3.org/2000/svg', element);
 }
 
 function drawBezier({x: startX, y: startY}, {x: endX, y: endY}, controlDist = 40) {
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const path = createSvg('path');
     $(path)
         .attr('d', `M ${startX} ${startY} C ${startX} ${startY + controlDist}, ${endX} ${endY - controlDist}, ${endX} ${endY}`)
         // .css('filter', 'url(#dropshadow)')
-        .appendTo($curves);
+        .appendTo($svgLayer);
 }
 
-function drawCircle({x, y}, radius = 5, color = 'white') {
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    $(circle)
+function drawEllipse({x, y}, rX = 5, rY = 5, color = 'white') {
+    const ellipse = createSvg('ellipse');
+    $(ellipse)
         .attr('cx', x)
         .attr('cy', y)
-        .attr('r', radius)
+        .attr('rx', rX)
+        .attr('ry', rY)
         .attr('fill', color)
-        .appendTo($curves);
+        .appendTo($svgLayer);
+}
+
+function drawRect({x, y}, width, height, radius = 0, color = 'white') {
+    const rect = createSvg('rect');
+    $(rect)
+        .attr('x', x)
+        .attr('y', y)
+        .attr('width', width)
+        .attr('height', height)
+        .attr('rx', radius)
+        .attr('fill', color)
+        .appendTo($svgLayer);
+}
+
+function drawText({x, y}, content) {
+    const text = createSvg('text');
+    $(text)
+        .attr('x', x)
+        .attr('y', y)
+        .html(content)
+        .appendTo($svgLayer);
 }
 
 function getBoardTop($board) {
@@ -339,15 +378,26 @@ function getBoardBottom($board) {
     return {x: left + width/2, y: top + height + MARGIN}
 }
 
+function getMidpoint(start, end) {
+    return {x: (start.x + end.x) / 2, y: (start.y + end.y) / 2};
+}
+
 function connectBoards() {
     clearSvg();
-    boards.forEach(($board) => {
-        const src = $board.attr('data-src');
-        if (src) {
-            const $srcBoard = $(`#${src}`);
-            drawBezier(getBoardBottom($srcBoard), getBoardTop($board));
+    connections.forEach(({startBoard, endBoard, move}) => {
+            const bottom = getBoardBottom(startBoard.$board);
+            const top = getBoardTop(endBoard.$board);
+            drawBezier(bottom, top);
+
+            // Add label TODO: draw last
+            const midPoint = getMidpoint(bottom, top);
+            drawRect(
+                {x: midPoint.x - LABEL_WIDTH / 2, y: midPoint.y - LABEL_HEIGHT / 2},
+                LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
+            );
+            drawText(midPoint, `${startBoard.formatCoords(...move[0])} → ${startBoard.formatCoords(...move[1])}`);
         }
-    });
+    );
 }
 
 /* Utility methods */

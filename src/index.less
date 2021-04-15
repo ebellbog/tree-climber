@@ -1,5 +1,5 @@
 @squareSize: 40px;
-@borderWidth: @squareSize / 2.5;
+@borderWidth: @squareSize/2.75;
 
 @darkSquare: #916647;
 @lightSquare: #e3bb9d;
@@ -34,7 +34,7 @@ body {
     width: 100%;
     white-space: nowrap;
     overflow-x: scroll;
-    padding: 40px 0;
+    padding: 50px 0;
 
     -ms-overflow-style: none;
     scrollbar-width: none; 
@@ -51,7 +51,7 @@ body {
 
     margin: 0 16px;
 
-    box-shadow: 0 0 0 @squareSize/15 black;
+    box-shadow: 0 0 0 2px black;
 
     // Checkered colors, independent of board size
     .board-row:nth-child(odd) .square:nth-child(odd),
@@ -83,9 +83,9 @@ body {
             transform: translate(-50%, -50%);
 
             color: white;
-            opacity: 0.7;
+            opacity: 0.65;
             font-family: sans-serif;
-            font-size: 12px;
+            font-size: @borderWidth*.8;
         }
 
         &:first-child, &:last-child {
@@ -159,7 +159,7 @@ body {
     }
 }
 
-#curves {
+#svg-layer {
     position: absolute;
     top: 0;
 
@@ -180,5 +180,19 @@ body {
             cursor: pointer;
             stroke: yellow;
         }
+    }
+
+    text {
+        fill: white;
+        font-size: 16px;
+        font-family: sans-serif;
+        text-anchor: middle;
+        dominant-baseline: central;
+    }
+
+    rect {
+        fill: @bgColor;
+        stroke: white;
+        stroke-width: 2px;
     }
 }
