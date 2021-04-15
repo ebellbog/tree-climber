@@ -119,7 +119,12 @@ class BishopsBoard {
                 const move = [this.selectedSquare, destSquare];
 
                 const newBoard = new BishopsBoard({src: {board: this, move}});
-                connections.push({startBoard: this, endBoard: newBoard, move});
+                connections.push({
+                    $startBoard: this.$board,
+                    startLabel: this.formatCoords(...this.selectedSquare),
+                    $endBoard: newBoard.$board,
+                    endLabel: this.formatCoords(...destSquare)
+                });
 
                 const $row = this.$board.closest('.row');
                 newBoard.insertBoard($row);
@@ -384,20 +389,25 @@ function getMidpoint(start, end) {
 
 function connectBoards() {
     clearSvg();
-    connections.forEach(({startBoard, endBoard, move}) => {
-            const bottom = getBoardBottom(startBoard.$board);
-            const top = getBoardTop(endBoard.$board);
-            drawBezier(bottom, top);
+    const labels = [];
+    connections.forEach(({$startBoard, $endBoard, startLabel, endLabel}) => {
+        const bottom = getBoardBottom($startBoard);
+        const top = getBoardTop($endBoard);
+        drawBezier(bottom, top);
 
-            // Add label TODO: draw last
-            const midPoint = getMidpoint(bottom, top);
-            drawRect(
-                {x: midPoint.x - LABEL_WIDTH / 2, y: midPoint.y - LABEL_HEIGHT / 2},
-                LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
-            );
-            drawText(midPoint, `${startBoard.formatCoords(...move[0])} → ${startBoard.formatCoords(...move[1])}`);
-        }
-    );
+        labels.push({
+            midpoint: getMidpoint(bottom, top),
+            startLabel,
+            endLabel
+        });
+    });
+    labels.forEach(({midpoint, startLabel, endLabel}) => {
+        drawRect(
+            {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
+            LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
+        );
+        drawText(midpoint, `${startLabel} → ${endLabel}`);
+    });
 }
 
 /* Utility methods */
