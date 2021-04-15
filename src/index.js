@@ -19,25 +19,11 @@ $(document).ready(() => {
     boards.push(firstBoard.$board);
     $('.row').append(firstBoard.$board);
 
-    $('body').on('click', '.board', ({currentTarget}) => {
-        const $board = $(currentTarget);
-        const $row = $board.closest('.row');
-        const srcId = parseInt($board.attr('id'));
-
-        const newBoard = new BishopsBoard(NUM_ROWS, NUM_COLS, srcId);
-        newBoard.insertBoard($row);
-        boards.push(newBoard.$board);
-
-        connectBoards();
-    });
-
-    // Can't listen via jQuery because scroll events don't bubble up
-    document.addEventListener('scroll', ({target}) => {
+    document.addEventListener('scroll', ({target}) => { // Can't listen via jQuery because scroll events don't bubble up
         if ($(target).hasClass('row')) {
             connectBoards();
         }
     }, true);
-
     connectBoards();
 });
 
@@ -51,6 +37,8 @@ class BishopsBoard {
         }
 
         this.game = new BishopsGame(rows, cols);
+        this.game.analyzeGame();
+
         this.renderGame();
 
         this.hookEvents();
@@ -60,9 +48,9 @@ class BishopsBoard {
         this.$board = $(`<div class="board" id=${boards.length}></div>`);
 
         for (let r = 0; r < rows; r++) {
-            const $row = $('<div></div>').attr('data-row-idx', r).addClass('board-row');
+            const $row = $('<div></div>').attr('data-row', r).addClass('board-row');
             for (let c = 0; c < cols; c++) {
-                const $square = $('<div></div>').attr('data-col-idx', c).addClass('square');
+                const $square = $('<div></div>').attr('data-col', c).addClass('square');
                 $row.append($square);
             }
             this.$board.append($row);
@@ -70,12 +58,32 @@ class BishopsBoard {
     }
 
     hookEvents() {
-        this.$board.on('mouseover', '.square', ({currentTarget}) => {
-            const $square = $(currentTarget);
-            const colIdx = $square.data('col-idx');
-            const rowIdx = $square.closest('.board-row').data('row-idx');
-            console.log(rowIdx, colIdx);
-        });
+        this.$board
+            .on('mouseover', '.square', ({currentTarget}) => {
+                const $square = $(currentTarget);
+                const col = $square.data('col');
+                const row = $square.closest('.board-row').data('row');
+
+                const {moveOptions, occupiedBy} = this.game.state[row][col];
+                moveOptions.forEach(([r, c]) => {
+                    const $moveSquare = this.getSquare(r, c);
+                    const {attackedBy} = this.game.state[r][c];
+                    $moveSquare.addClass(attackedBy[oppositeColor(occupiedBy)] ? 'invalid-move' : 'valid-move');
+                });
+            })
+            .on('mouseout', '.square', () => {
+                this.$board.find('.valid-move, .invalid-move').removeClass('valid-move invalid-move');
+            })
+            .on('click', () => {
+                const $row = this.$board.closest('.row');
+                const srcId = parseInt(this.$board.attr('id'));
+
+                const newBoard = new BishopsBoard(this.game.rows, this.game.cols, srcId);
+                newBoard.insertBoard($row);
+                boards.push(newBoard.$board);
+
+                connectBoards();
+            });
     }
 
     insertBoard($row) {
@@ -109,20 +117,85 @@ class BishopsBoard {
 
     renderGame() {
         const $bishop = $('<i class="fa fa-chess-bishop"></i>');
-        const {gameState, rows, cols} = this.game;
+        const {state, rows, cols} = this.game;
 
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                const {occupiedBy} = gameState[r][c];
+                const {occupiedBy} = state[r][c];
                 if (occupiedBy) {
-                    this.getSquare(r, c).append($bishop.clone().addClass(occupiedBy));
+                    this.getSquare(r, c).addClass(occupiedBy).append($bishop.clone());
                 }
             }
         }
     }
 
     getSquare(row, col) {
-        return this.$board.find(`[data-row-idx="${row}"]`).find(`[data-col-idx="${col}"]`);
+        return this.$board.find(`[data-row="${row}"]`).find(`[data-col="${col}"]`);
+    }
+}
+
+/* Game logic */
+
+class BishopsGame {
+    constructor(rows, cols) {
+        this.rows = rows;
+        this.cols = cols;
+
+        this.state = [];
+
+        this.initializeGame();
+    }
+
+    initializeGame() {
+        for (let r = 0; r < this.rows; r++) {
+            const row = [];
+            for (let c = 0; c < this.cols; c++) {
+                row.push({
+                    attackedBy: {
+                        white: false,
+                        black: false
+                    },
+                    moveOptions: [],
+                    occupiedBy: (c === 0) ? 'black' : (c === this.cols - 1) ? 'white' : null
+                });
+            }
+            this.state.push(row);
+        }
+    };
+
+    analyzeGame() {
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const square = this.state[r][c];
+                const {occupiedBy} = square;
+                if (occupiedBy) {
+                    square.moveOptions = this.getBishopMoves(r, c);
+                    for (let m = 0; m < square.moveOptions.length; m++) {
+                        const [mR, mC] = square.moveOptions[m];
+                        this.state[mR][mC].attackedBy[occupiedBy] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    getBishopMoves(row, col) {
+        const moves = [];
+        for (let c = 0; c < this.cols; c++) {
+            if (c === col) continue;
+            const dist = Math.abs(col - c);
+            if (row - dist >= 0) {
+                moves.push([row - dist, c]);
+            }
+            if (row + dist < this.rows) {
+                moves.push([row + dist, c]);
+            }
+        }
+        return moves;
+    }
+
+    getHash() {
+        return this.state.map((row) => row.map((square) => square.occupiedBy || '-').join('')).join('');
     }
 }
 
@@ -175,66 +248,7 @@ function connectBoards() {
     });
 }
 
-/* Game logic */
-
-class BishopsGame {
-    constructor(rows, cols) {
-        this.rows = rows;
-        this.cols = cols;
-
-        this.initializeGame();
-    }
-
-    initializeGame() {
-        this.gameState = [];
-        for (let r = 0; r < this.rows; r++) {
-            const row = [];
-            for (let c = 0; c < this.cols; c++) {
-                row.push({
-                    attackedBy: {
-                        white: false,
-                        black: false
-                    },
-                    moveOptions: [],
-                    occupiedBy: (c === 0) ? 'black' : (c === this.cols - 1) ? 'white' : null
-                });
-            }
-            this.gameState.push(row);
-        }
-    };
-
-    analyzeGame() {
-        for (let r = 0; r < this.rows; r++) {
-            for (let c = 0; c < this.cols; c++) {
-                const square = this.gameState[r][c];
-                const {occupiedBy} = square;
-                if (occupiedBy) {
-                    square.moveOptions = this.getBishopMoves(r, c);
-                    for (let m = 0; m < square.moveOptions.length; m++) {
-                        const [mR, mC] = square.moveOptions[m];
-                        this.gameState[mR][mC].attackedBy[occupiedBy] = true;
-                    }
-                }
-            }
-        }
-    }
-
-    getBishopMoves(row, col) {
-        const moves = [];
-        for (let c = 0; c < this.cols; c++) {
-            if (c === col) continue;
-            const dist = Math.abs(col - c);
-            if (row - dist >= 0) {
-                moves.push([row - dist, c]);
-            }
-            if (row + dist < this.rows) {
-                moves.push([row + dist, c]);
-            }
-        }
-        return moves;
-    }
-
-    getHash() {
-        return this.gameState.map((row) => row.map((square) => square.occupiedBy || '-').join('')).join('');
-    }
+/* Utility methods */
+function oppositeColor(color) {
+    return (color === 'white') ? 'black' : 'white';
 }
