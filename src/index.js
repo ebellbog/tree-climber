@@ -31,6 +31,8 @@ $(document).ready(() => {
 
 class BishopsBoard {
     constructor(rows, cols, srcId) {
+        this.$board = null;
+
         this.initBoard(rows, cols);
         if (srcId !== null) {
             this.$board.attr('data-src', srcId);
@@ -138,25 +140,22 @@ class BishopsBoard {
 
 class BishopsGame {
     constructor(rows, cols) {
-        this.rows = rows;
-        this.cols = cols;
-
         this.state = [];
 
-        this.initializeGame();
+        this.initializeGame(rows, cols);
     }
 
-    initializeGame() {
-        for (let r = 0; r < this.rows; r++) {
+    initializeGame(rows, cols) {
+        for (let r = 0; r < rows; r++) {
             const row = [];
-            for (let c = 0; c < this.cols; c++) {
+            for (let c = 0; c < cols; c++) {
                 row.push({
                     attackedBy: {
                         white: false,
                         black: false
                     },
                     moveOptions: [],
-                    occupiedBy: (c === 0) ? 'black' : (c === this.cols - 1) ? 'white' : null
+                    occupiedBy: (c === 0) ? 'black' : (c === cols - 1) ? 'white' : null
                 });
             }
             this.state.push(row);
@@ -196,6 +195,13 @@ class BishopsGame {
 
     getHash() {
         return this.state.map((row) => row.map((square) => square.occupiedBy || '-').join('')).join('');
+    }
+
+    get rows() {
+        return this.state.length;
+    }
+    get cols() {
+        return this.state[0].length;
     }
 }
 
