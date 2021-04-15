@@ -23,7 +23,13 @@ $(document).ready(() => {
             connectBoards();
         }
     }, true);
-    connectBoards();
+
+    $(window).on('keypress', ({which}) => {
+        if (which === 32) {
+            $('#state-graph').toggleClass('no-borders');
+            connectBoards();
+        }
+    });
 });
 
 /* DOM methods */
@@ -57,10 +63,21 @@ class BishopsBoard {
     initBoard(rows, cols) {
         this.$board = $(`<div class="board" id=${boards.length}></div>`);
 
-        for (let r = 0; r < rows; r++) {
-            const $row = $('<div></div>').attr('data-row', r).addClass('board-row');
-            for (let c = 0; c < cols; c++) {
-                const $square = $('<div></div>').attr('data-col', c).addClass('square');
+        for (let r = -1; r <= rows; r++) {
+            const $row = $('<div></div>');
+            if (r > -1 && r < rows) {
+                $row.attr('data-row', r).addClass('board-row');
+            }
+            for (let c = -1; c <= cols; c++) {
+                const $square = $('<div></div>');
+                if (r === -1 || r === rows || c === -1 || c === cols) { // Borders
+                    const coord = ((r === -1 || r === rows)  && c > -1 && c < cols) ? cols - c : // Numeric indices
+                        ((c === -1 || c === cols) && r > -1 && r < rows) ? String.fromCharCode(96 + rows - r) : // Alphabetic indices
+                        '';
+                    $square.addClass('border-square').html(`<div class="coord">${coord}</div>`);
+                } else {
+                    $square.attr('data-col', c).addClass('square');
+                }
                 $row.append($square);
             }
             this.$board.append($row);
