@@ -18,6 +18,8 @@ const $svgLayer = $('#svg-layer');
 const boards = [];
 const connections = [];
 
+let showCoords = false;
+
 /* Initialization & event hooks */
 
 $(document).ready(() => {
@@ -32,7 +34,8 @@ $(document).ready(() => {
 
     $(window).on('keypress', ({which}) => {
         if (which === 32) {
-            $('#state-graph').toggleClass('no-borders');
+            showCoords = !showCoords;
+            $('#state-graph').toggleClass('no-borders', !showCoords);
             connectBoards();
         }
     });
@@ -395,12 +398,15 @@ function connectBoards() {
         const top = getBoardTop($endBoard);
         drawBezier(bottom, top);
 
-        labels.push({
-            midpoint: getMidpoint(bottom, top),
-            startLabel,
-            endLabel
-        });
+        if (showCoords) {
+            labels.push({
+                midpoint: getMidpoint(bottom, top),
+                startLabel,
+                endLabel
+            });
+        }
     });
+
     labels.forEach(({midpoint, startLabel, endLabel}) => {
         drawRect(
             {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
