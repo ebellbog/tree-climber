@@ -7,6 +7,7 @@
 
 @validColor: limegreen;
 @invalidColor: red;
+@priorColor: gold;
 
 @bgColor: #7c3636;
 
@@ -45,6 +46,8 @@ body {
 
 .board {
     display: inline-block;
+    position: relative;
+    cursor: move;
 
     border-radius: @squareSize/10;
     overflow: hidden;
@@ -136,6 +139,10 @@ body {
         &.invalid-move {
             background-color: @invalidColor!important;
         }
+        &.prior-move {
+            background-color: @priorColor!important;
+            cursor: pointer;
+        }
 
         &:hover, &.selected {
             .fa-chess-bishop {
@@ -158,9 +165,14 @@ body {
         }
     }
 
+    &.prior {
+        box-shadow: 0 0 0 @squareSize/8 @priorColor!important;
+    }
+
     animation: popIn .5s;
     transform-origin: top center;
 
+    // Don't animate first board
     &#b0 {
         animation: none;
     }
@@ -175,17 +187,14 @@ body {
 }
 
 #svg-layer {
+    z-index: -1;
     position: absolute;
     top: 0;
-
-    pointer-events: none;
 
     width: 100%;
     height: 100%;
 
     path {
-        pointer-events: stroke;
-
         stroke: white;
         stroke-width: 4px;
         stroke-linecap: round;

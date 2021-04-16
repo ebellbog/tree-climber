@@ -15,8 +15,8 @@ const LABEL_RADIUS = 12;
 
 const $svgLayer = $('#svg-layer');
 
-const boards = [];
-const connections = [];
+const boards = {};
+const connections = {};
 
 let showCoords = false;
 
@@ -49,7 +49,7 @@ class BishopsBoard {
     constructor({rows, cols, src}) {
         this.selectedSquare = null;
         this.$board = null;
-
+        this.dragging = false;
 
         if (src) {
             const {board, move} = src;
@@ -68,11 +68,11 @@ class BishopsBoard {
         this.renderGame();
 
         this.hookEvents();
-        boards.push(this.$board);
+        boards[this.game.hash] = this.$board;
     }
 
     initBoard(rows, cols) {
-        this.$board = $(`<div class="board" id="b${boards.length}"></div>`);
+        this.$board = $(`<div class="board" id="b${Object.keys(boards).length}"></div>`);
 
         for (let r = -1; r <= rows; r++) {
             const $row = $('<div></div>');
@@ -98,6 +98,11 @@ class BishopsBoard {
     hookEvents() {
         this.$board
             .on('mouseover', '.square', ({currentTarget}) => {
+                const $square = $(currentTarget);
+                if ($square.hasClass('prior-move')) {
+                    const priorId = $square.attr('data-prior');
+                    $(`#${priorId}`).addClass('prior');
+                }
                 if (this.selectedSquare) {
                     return;
                 }
@@ -105,15 +110,20 @@ class BishopsBoard {
             })
             .on('mouseout', '.square', () => {
                 if (this.selectedSquare) {
+                    $('.prior').removeClass('prior');
                     return;
                 }
                 this.clearSelection();
             })
             .on('click', '.square.white, .square.black', (e) => {
                 e.stopPropagation();
-                this.clearSelection();
 
                 const $square = $(e.currentTarget);
+
+                const previouslySelected = $square.hasClass('selected');
+                this.clearSelection();
+                if (previouslySelected) return; // toggle selection on successive clicks
+
                 $square.addClass('selected');
                 this.selectedSquare = this.getCoords($square);
 
@@ -124,25 +134,82 @@ class BishopsBoard {
                 const move = [this.selectedSquare, destSquare];
 
                 const newBoard = new BishopsBoard({src: {board: this, move}});
-                connections.push({
+                const key = this.getConnectionKey(this.$board, newBoard.$board);
+
+                connections[key] = {
                     $startBoard: this.$board,
                     startLabel: this.formatCoords(...this.selectedSquare),
                     $endBoard: newBoard.$board,
                     endLabel: this.formatCoords(...destSquare)
-                });
+                };
 
-                const $row = this.$board.closest('.row');
-                newBoard.insertBoard($row);
+                newBoard.insertBoard(this.getRow());
 
                 connectBoards();
             })
+            .on('click', '.prior-move', ({currentTarget}) => {
+                const $square = $(currentTarget);
+                const targetCoords = this.getCoords($square);
+
+                const priorId = $square.data('prior');
+                const $priorBoard = $(`#${priorId}`);
+
+                const rowIdx = this.getRowIdx();
+                const priorIdx = this.getRowIdx($priorBoard);
+
+                // Determine start & end based on row order, from top to bottom
+                let $startBoard, startLabel, $endBoard, endLabel;
+                if (rowIdx > priorIdx) {
+                    $startBoard = $priorBoard;
+                    startLabel = this.formatCoords(...targetCoords);
+                    $endBoard = this.$board;
+                    endLabel = this.formatCoords(...this.selectedSquare);
+                } else {
+                    $startBoard = this.$board;
+                    startLabel = this.formatCoords(...this.selectedSquare);
+                    $endBoard = $priorBoard;
+                    endLabel = this.formatCoords(...targetCoords);
+                }
+
+                const key = this.getConnectionKey($startBoard, $endBoard);
+                if (connections[key]) return;
+
+                console.log('adding new connection');
+                connections[key] = {
+                    $startBoard,
+                    startLabel,
+                    $endBoard,
+                    endLabel
+                };
+
+                connectBoards();
+            })
+            .on('mousedown', (e) => {
+                this.dragging = e.pageX;
+            })
+            .on('mousemove', (e) => {
+                if (this.dragging) {
+                    const deltaX = e.pageX - this.dragging;
+                    this.$board.css('left', `+=${deltaX}`);
+                    this.dragging = e.pageX;
+                    connectBoards();
+                }
+            })
+            .on('mouseup', () => {
+                this.dragging = false;
+            });
 
         $('body').on('click', () => this.clearSelection());
     }
 
     clearSelection() {
         this.selectedSquare = null;
-        this.$board.find('.valid-move, .invalid-move, .selected').removeClass('valid-move invalid-move selected');
+
+        const classesToRemove = ['valid-move', 'invalid-move', 'prior-move', 'selected', 'prior'];
+        this.$board
+            .find(classesToRemove.map((c) => `.${c}`).join(','))
+            .addBack() // include the board itself
+            .removeClass(classesToRemove.join(' '));
     }
 
     highlightMoves($square) {
@@ -152,7 +219,17 @@ class BishopsBoard {
         moveOptions.forEach(([r, c]) => {
             const $moveSquare = this.getSquare(r, c);
             const {attackedBy} = this.game.state[r][c];
-            $moveSquare.addClass(attackedBy[oppositeColor(occupiedBy)] ? 'invalid-move' : 'valid-move');
+            if (attackedBy[oppositeColor(occupiedBy)]) {
+                $moveSquare.addClass('invalid-move');
+            } else {
+                const possibleGame = new BishopsGame({src: {game: this.game, move: [[row, col], [r, c]]}});
+                const $priorBoard = boards[possibleGame.hash];
+                if ($priorBoard) {
+                    $moveSquare.addClass('prior-move').attr('data-prior', $priorBoard.attr('id'));
+                } else {
+                    $moveSquare.addClass('valid-move');
+                }
+            }
         });
     }
 
@@ -208,6 +285,14 @@ class BishopsBoard {
         return this.$board.find(`[data-row="${row}"]`).find(`[data-col="${col}"]`);
     }
 
+    getRow($board) {
+        return ($board || this.$board).closest('.row');
+    }
+
+    getRowIdx($board) {
+        return this.getRow($board).index();
+    }
+
     getCoords($square) {
         const col = $square.data('col');
         const row = $square.closest('.board-row').data('row');
@@ -218,6 +303,10 @@ class BishopsBoard {
         const formattedRow = String.fromCharCode(96 + this.game.rows - r);
         const formattedCol = this.game.cols - c;
         return `${formattedRow}${formattedCol}`;
+    }
+
+    getConnectionKey($startBoard, $endBoard) {
+        return `${$startBoard.attr('id')}${$endBoard.attr('id')}`;
     }
 
     get id() {
@@ -395,7 +484,7 @@ function getMidpoint(start, end) {
 function connectBoards() {
     clearSvg();
     const labels = [];
-    connections.forEach(({$startBoard, $endBoard, startLabel, endLabel}) => {
+    Object.values(connections).forEach(({$startBoard, $endBoard, startLabel, endLabel}) => {
         const bottom = getBoardBottom($startBoard);
         const top = getBoardTop($endBoard);
         drawBezier(bottom, top);
