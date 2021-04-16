@@ -32,13 +32,15 @@ $(document).ready(() => {
         }
     }, true);
 
-    $(window).on('keypress', ({which}) => {
-        if (which === 32) {
-            showCoords = !showCoords;
-            $('#state-graph').toggleClass('no-borders', !showCoords);
-            connectBoards();
-        }
-    });
+    $(window)
+        .on('keypress', ({which}) => {
+            if (which === 32) {
+                showCoords = !showCoords;
+                $('#state-graph').toggleClass('no-borders', !showCoords);
+                connectBoards();
+            }
+        })
+        .on('resize', connectBoards);
 });
 
 /* DOM methods */
@@ -70,7 +72,7 @@ class BishopsBoard {
     }
 
     initBoard(rows, cols) {
-        this.$board = $(`<div class="board" id=${boards.length}></div>`);
+        this.$board = $(`<div class="board" id="b${boards.length}"></div>`);
 
         for (let r = -1; r <= rows; r++) {
             const $row = $('<div></div>');
