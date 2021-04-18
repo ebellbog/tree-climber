@@ -200,9 +200,8 @@ body {
         stroke-linecap: round;
         fill: transparent;
 
-        &:hover {
-            cursor: pointer;
-            stroke: yellow;
+        &.prior {
+            stroke: @priorColor;
         }
     }
 
@@ -212,11 +211,19 @@ body {
         font-family: sans-serif;
         text-anchor: middle;
         dominant-baseline: central;
+
+        &.prior {
+            fill: @priorColor;
+        }
     }
 
     rect {
         fill: @bgColor;
         stroke: white;
         stroke-width: 2px;
+
+        &.prior {
+            stroke: @priorColor;
+        }
     }
 }

@@ -101,7 +101,9 @@ class BishopsBoard {
                 const $square = $(currentTarget);
                 if ($square.hasClass('prior-move')) {
                     const priorId = $square.attr('data-prior');
-                    $(`#${priorId}`).addClass('prior');
+                    const $priorBoard = $(`#${priorId}`);
+                    const key = this.getConnectionKey($priorBoard, this.$board);
+                    $priorBoard.add($svgLayer.find(`.${key}`)).addClass('prior');
                 }
                 if (this.selectedSquare) {
                     return;
@@ -115,7 +117,7 @@ class BishopsBoard {
                 }
                 this.clearSelection();
             })
-            .on('click', '.square.white, .square.black', (e) => {
+            .on('click', '.square.white, .square.black', (e) => { // i.e. an occupied square
                 e.stopPropagation();
 
                 const $square = $(e.currentTarget);
@@ -134,16 +136,15 @@ class BishopsBoard {
                 const move = [this.selectedSquare, destSquare];
 
                 const newBoard = new BishopsBoard({src: {board: this, move}});
-                const key = this.getConnectionKey(this.$board, newBoard.$board);
+                newBoard.insertBoard(this.getRow());
 
+                const key = this.getConnectionKey(this.$board, newBoard.$board);
                 connections[key] = {
                     $startBoard: this.$board,
                     startLabel: this.formatCoords(...this.selectedSquare),
                     $endBoard: newBoard.$board,
                     endLabel: this.formatCoords(...destSquare)
                 };
-
-                newBoard.insertBoard(this.getRow());
 
                 connectBoards();
             })
@@ -153,6 +154,9 @@ class BishopsBoard {
 
                 const priorId = $square.data('prior');
                 const $priorBoard = $(`#${priorId}`);
+
+                const key = this.getConnectionKey($priorBoard, this.$board);
+                if (connections[key]) return;
 
                 const rowIdx = this.getRowIdx();
                 const priorIdx = this.getRowIdx($priorBoard);
@@ -171,10 +175,6 @@ class BishopsBoard {
                     endLabel = this.formatCoords(...targetCoords);
                 }
 
-                const key = this.getConnectionKey($startBoard, $endBoard);
-                if (connections[key]) return;
-
-                console.log('adding new connection');
                 connections[key] = {
                     $startBoard,
                     startLabel,
@@ -206,9 +206,8 @@ class BishopsBoard {
         this.selectedSquare = null;
 
         const classesToRemove = ['valid-move', 'invalid-move', 'prior-move', 'selected', 'prior'];
-        this.$board
+        $('body')
             .find(classesToRemove.map((c) => `.${c}`).join(','))
-            .addBack() // include the board itself
             .removeClass(classesToRemove.join(' '));
     }
 
@@ -305,8 +304,12 @@ class BishopsBoard {
         return `${formattedRow}${formattedCol}`;
     }
 
-    getConnectionKey($startBoard, $endBoard) {
-        return `${$startBoard.attr('id')}${$endBoard.attr('id')}`;
+    getConnectionKey($board1, $board2) {
+        // Ensure a consistent ordering of IDs, regardless of which board initiates the connection
+        return [$board1, $board2]
+            .sort(($b1, $b2) => this.getRowIdx($b1) > this.getRowIdx($b2) ? 1 : -1)
+            .map(($b) => $b.attr('id'))
+            .join('');
     }
 
     get id() {
@@ -425,15 +428,14 @@ function createSvg(element) {
 
 function drawBezier({x: startX, y: startY}, {x: endX, y: endY}, controlDist = 40) {
     const path = createSvg('path');
-    $(path)
+    return $(path)
         .attr('d', `M ${startX} ${startY} C ${startX} ${startY + controlDist}, ${endX} ${endY - controlDist}, ${endX} ${endY}`)
-        // .css('filter', 'url(#dropshadow)')
         .appendTo($svgLayer);
 }
 
 function drawEllipse({x, y}, rX = 5, rY = 5, color = 'white') {
     const ellipse = createSvg('ellipse');
-    $(ellipse)
+    return $(ellipse)
         .attr('cx', x)
         .attr('cy', y)
         .attr('rx', rX)
@@ -444,7 +446,7 @@ function drawEllipse({x, y}, rX = 5, rY = 5, color = 'white') {
 
 function drawRect({x, y}, width, height, radius = 0, color = 'white') {
     const rect = createSvg('rect');
-    $(rect)
+    return $(rect)
         .attr('x', x)
         .attr('y', y)
         .attr('width', width)
@@ -456,7 +458,7 @@ function drawRect({x, y}, width, height, radius = 0, color = 'white') {
 
 function drawText({x, y}, content) {
     const text = createSvg('text');
-    $(text)
+    return $(text)
         .attr('x', x)
         .attr('y', y)
         .html(content)
@@ -484,26 +486,27 @@ function getMidpoint(start, end) {
 function connectBoards() {
     clearSvg();
     const labels = [];
-    Object.values(connections).forEach(({$startBoard, $endBoard, startLabel, endLabel}) => {
+    Object.entries(connections).forEach(([key, {$startBoard, $endBoard, startLabel, endLabel}]) => {
         const bottom = getBoardBottom($startBoard);
         const top = getBoardTop($endBoard);
-        drawBezier(bottom, top);
+        drawBezier(bottom, top).addClass(key);
 
         if (showCoords) {
             labels.push({
                 midpoint: getMidpoint(bottom, top),
                 startLabel,
-                endLabel
+                endLabel,
+                key
             });
         }
     });
 
-    labels.forEach(({midpoint, startLabel, endLabel}) => {
+    labels.forEach(({midpoint, startLabel, endLabel, key}) => {
         drawRect(
             {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
             LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
-        );
-        drawText(midpoint, `${startLabel} → ${endLabel}`);
+        ).addClass(key);
+        drawText(midpoint, `${startLabel} → ${endLabel}`).addClass(key);
     });
 }
 
