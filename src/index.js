@@ -2,7 +2,7 @@ import './index.less';
 
 /* Constants */
 
-const NUM_ROWS = 4; 
+const NUM_ROWS = 4;
 const NUM_COLS = 5;
 
 const MARGIN = 12;
@@ -68,7 +68,11 @@ class BishopsBoard {
         this.renderGame();
 
         this.hookEvents();
-        boards[this.game.hash] = this.$board;
+
+        boards[this.game.hash] = this;
+        Object.values(boards).forEach(({game}) => {
+            game.updatePriors();
+        });
     }
 
     initBoard(rows, cols) {
@@ -215,19 +219,15 @@ class BishopsBoard {
         const [row, col] = this.getCoords($square);
 
         const {moveOptions, occupiedBy} = this.game.state[row][col];
-        moveOptions.forEach(([r, c]) => {
-            const $moveSquare = this.getSquare(r, c);
-            const {attackedBy} = this.game.state[r][c];
-            if (attackedBy[oppositeColor(occupiedBy)]) {
-                $moveSquare.addClass('invalid-move');
-            } else {
-                const possibleGame = new BishopsGame({src: {game: this.game, move: [[row, col], [r, c]]}});
-                const $priorBoard = boards[possibleGame.hash];
-                if ($priorBoard) {
-                    $moveSquare.addClass('prior-move').attr('data-prior', $priorBoard.attr('id'));
-                } else {
-                    $moveSquare.addClass('valid-move');
-                }
+        moveOptions.forEach((move) => {
+            const $moveSquare = this.getSquare(move.row, move.col);
+
+            const {type} = move;
+            $moveSquare.addClass(`${type}-move`);
+
+            if (type === 'prior') {
+                const priorBoard = boards[move.result];
+                $moveSquare.attr('data-prior', priorBoard.id);
             }
         });
     }
@@ -350,6 +350,17 @@ class BishopsGame {
     };
 
     analyzeGame() {
+        // Reset attack flags
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                this.state[r][c].attackedBy = {
+                    white: false,
+                    black: false
+                };
+            };
+        };
+
+        // First pass: get move options, flag squares as attacked
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const square = this.state[r][c];
@@ -357,8 +368,44 @@ class BishopsGame {
                 if (occupiedBy) {
                     square.moveOptions = this.findBishopMoves(r, c);
                     for (let m = 0; m < square.moveOptions.length; m++) {
-                        const [mR, mC] = square.moveOptions[m];
-                        this.state[mR][mC].attackedBy[occupiedBy] = true;
+                        const move = square.moveOptions[m];
+                        this.state[move.row][move.col].attackedBy[occupiedBy] = true;
+                    }
+                }
+            }
+        }
+
+        // Second pass: using attack flags from above, mark move options as valid / invalid
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const {occupiedBy, moveOptions} = this.state[r][c];
+                for (let m = 0; m < moveOptions.length; m++) {
+                    const move = moveOptions[m];
+                    const moveSquare = this.state[move.row][move.col];
+                    move.type = moveSquare.attackedBy[oppositeColor(occupiedBy)] ? 'invalid' : 'valid';
+                }
+            }
+        }
+    }
+
+    // Mark valid move options as prior, if they lead to a game state that already exists; count unexplored options
+    updatePriors() {
+        this.unexploredOptions = 0;
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const {moveOptions} = this.state[r][c];
+                for (let m = 0; m < moveOptions.length; m++) {
+                    const move = moveOptions[m];
+                    if (!move.result) {
+                        const possibleGame = new BishopsGame({src: {game: this, move: [[r, c], [move.row, move.col]]}});
+                        move.result = possibleGame.hash;
+                    }
+                    if (move.type === 'valid') {
+                        if (boards[move.result]) {
+                            move.type = 'prior';
+                        } else {
+                            this.unexploredOptions++;
+                        }
                     }
                 }
             }
@@ -382,7 +429,7 @@ class BishopsGame {
                     const newRow = row + (dist * rowDirection);
                     const newCol = col + (dist * colDirection);
                     if (isInBounds(newRow, newCol) && !this.state[newRow][newCol].occupiedBy) {
-                        moves.push([newRow, newCol]);
+                        moves.push({row: newRow, col: newCol});
                     } else {
                         break;
                     }
