@@ -57,15 +57,15 @@ body {
     box-shadow: 0 0 0 2px black;
 
     // Checkered colors, independent of board size
-    .board-row:nth-child(odd) .square:nth-child(odd),
-    .board-row:nth-child(even) .square:nth-child(even) {
+    .board-row:nth-last-child(odd) .square:nth-last-child(odd),
+    .board-row:nth-last-child(even) .square:nth-last-child(even) {
         background-color: @darkSquare;
         &.white:hover, &.black:hover {
             background-color: lighten(@darkSquare, @highlight);
         }
     }
-    .board-row:nth-child(odd) .square:nth-child(even),
-    .board-row:nth-child(even) .square:nth-child(odd)  {
+    .board-row:nth-last-child(odd) .square:nth-last-child(even),
+    .board-row:nth-last-child(even) .square:nth-last-child(odd) {
         background-color: @lightSquare;
         &.white:hover, &.black:hover {
             background-color: darken(@lightSquare, @highlight);
