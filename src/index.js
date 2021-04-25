@@ -17,13 +17,14 @@ const $svgLayer = $('#svg-layer');
 
 const boards = {};
 const connections = {};
+let firstBoard = null;
 
 let showCoords = false;
 
 /* Initialization & event hooks */
 
 $(document).ready(() => {
-    const firstBoard = new BishopsBoard({rows: NUM_ROWS, cols: NUM_COLS});
+    firstBoard = new BishopsBoard({rows: NUM_ROWS, cols: NUM_COLS});
     firstBoard.insertBoard($('.row'));
 
     document.addEventListener('scroll', ({target}) => { // Can't listen via jQuery because scroll events don't bubble up
@@ -38,6 +39,9 @@ $(document).ready(() => {
                 showCoords = !showCoords;
                 $('#state-graph').toggleClass('no-borders', !showCoords);
                 connectBoards();
+            } else if (which === 13) {
+                $('#state-graph').toggleClass('show-stats');
+                connectBoards();
             }
         })
         .on('resize', connectBoards);
@@ -47,16 +51,24 @@ $(document).ready(() => {
 
 class BishopsBoard {
     constructor({rows, cols, src}) {
-        this.selectedSquare = null;
         this.$board = null;
+        this.$stats = null;
+
+        this.connectedBoards = [];
+
+        this.selectedSquare = null;
         this.dragging = false;
 
         if (src) {
             const {board, move} = src;
-            const {game} = board;
+            const {game, index} = board;
+
+            this.connectedBoards.push(board);
 
             this.initBoard(game.rows, game.cols);
-            this.$board.attr('data-src', board.id);
+            this.$board
+                .attr('data-src', board.id)
+                .attr('data-index', board.index + 1);
 
             this.game = new BishopsGame({src: {game, move}});
         } else {
@@ -70,13 +82,15 @@ class BishopsBoard {
         this.hookEvents();
 
         boards[this.game.hash] = this;
-        Object.values(boards).forEach(({game}) => {
-            game.updatePriors();
+        Object.values(boards).forEach((board) => {
+            board.game.updatePriors();
+            board.updateStats();
         });
     }
 
     initBoard(rows, cols) {
-        this.$board = $(`<div class="board" id="b${Object.keys(boards).length}"></div>`);
+        this.$board = $(`<div class="board" id="b${Object.keys(boards).length}" data-index="0"></div>`);
+        this.$stats = $('<div class="board-stats"></div>');
 
         for (let r = -1; r <= rows; r++) {
             const $row = $('<div></div>');
@@ -141,6 +155,7 @@ class BishopsBoard {
 
                 const newBoard = new BishopsBoard({src: {board: this, move}});
                 newBoard.insertBoard(this.getRow());
+                this.connectedBoards.push(newBoard);
 
                 const key = this.getConnectionKey(this.$board, newBoard.$board);
                 connections[key] = {
@@ -179,6 +194,9 @@ class BishopsBoard {
                     endLabel = this.formatCoords(...targetCoords);
                 }
 
+                $endBoard.attr('data-index', parseInt($startBoard.attr('data-index')) + 1);
+                Object.values(boards).forEach((board) => board.updateStats());
+
                 connections[key] = {
                     $startBoard,
                     startLabel,
@@ -194,7 +212,7 @@ class BishopsBoard {
             .on('mousemove', (e) => {
                 if (this.dragging) {
                     const deltaX = e.pageX - this.dragging;
-                    this.$board.css('left', `+=${deltaX}`);
+                    this.$board.add(this.$stats).css('left', `+=${deltaX}`);
                     this.dragging = e.pageX;
                     connectBoards();
                 }
@@ -233,9 +251,11 @@ class BishopsBoard {
     }
 
     insertBoard($row) {
+        const $wrappedBoard = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats);
+
         // Inserting the first board
         if (!$row.children().length) {
-            return $row.append(this.$board);
+            return $row.append($wrappedBoard);
         }
 
         let $nextRow = $row.next('.row');
@@ -255,14 +275,14 @@ class BishopsBoard {
             $rowBoards.each((idx, board) => {
                 const $board = $(board);
                 if (srcIdx < getSrcIdx($board)) {
-                    $board.before(this.$board);
+                    $board.before($wrappedBoard);
                     return false;
                 } else if (idx === $rowBoards.length - 1) {
-                    $nextRow.append(this.$board);
+                    $nextRow.append($wrappedBoard);
                 }
             });
         } else {
-            $nextRow.append(this.$board);
+            $nextRow.append($wrappedBoard);
         }
     }
 
@@ -278,6 +298,13 @@ class BishopsBoard {
                 }
             }
         }
+    }
+
+    updateStats() {
+        this.$stats.html(
+            `<div class="stats-row"><i class="fa fa-fw fa-hashtag"></i> &nbsp;${this.index}</div>` +
+            `<div class="stats-row"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${this.game.exploredOptions} / ${this.game.totalOptions}</div>`
+        );
     }
 
     getSquare(row, col) {
@@ -314,6 +341,13 @@ class BishopsBoard {
 
     get id() {
         return this.$board.attr('id');
+    }
+
+    get index() {
+        return parseInt(this.$board.attr('data-index'));
+    }
+    set index(idx) {
+        this.$board.attr('data-index', idx);
     }
 }
 
@@ -390,7 +424,8 @@ class BishopsGame {
 
     // Mark valid move options as prior, if they lead to a game state that already exists; count unexplored options
     updatePriors() {
-        this.unexploredOptions = 0;
+        this.exploredOptions = 0;
+        this.totalOptions = 0;
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const {moveOptions} = this.state[r][c];
@@ -400,11 +435,11 @@ class BishopsGame {
                         const possibleGame = new BishopsGame({src: {game: this, move: [[r, c], [move.row, move.col]]}});
                         move.result = possibleGame.hash;
                     }
-                    if (move.type === 'valid') {
+                    if (move.type !== 'invalid') {
+                        this.totalOptions++;
                         if (boards[move.result]) {
                             move.type = 'prior';
-                        } else {
-                            this.unexploredOptions++;
+                            this.exploredOptions++;
                         }
                     }
                 }
