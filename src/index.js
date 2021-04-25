@@ -19,32 +19,32 @@ const boards = {};
 const connections = {};
 let firstBoard = null;
 
-let showCoords = false;
-
 /* Initialization & event hooks */
 
 $(document).ready(() => {
     firstBoard = new BishopsBoard({rows: NUM_ROWS, cols: NUM_COLS});
     firstBoard.insertBoard($('.row'));
 
+    firstBoard.game.updatePriors();
+    firstBoard.renderStats();
+
     document.addEventListener('scroll', ({target}) => { // Can't listen via jQuery because scroll events don't bubble up
         if ($(target).hasClass('row')) {
-            connectBoards();
+            updateConnections();
         }
     }, true);
 
     $(window)
         .on('keypress', ({which}) => {
             if (which === 32) {
-                showCoords = !showCoords;
-                $('#state-graph').toggleClass('no-borders', !showCoords);
-                connectBoards();
+                $('#state-graph').toggleClass('show-moves');
+                updateConnections();
             } else if (which === 13) {
                 $('#state-graph').toggleClass('show-stats');
-                connectBoards();
+                updateConnections();
             }
         })
-        .on('resize', connectBoards);
+        .on('resize', updateConnections);
 });
 
 /* DOM methods */
@@ -54,21 +54,15 @@ class BishopsBoard {
         this.$board = null;
         this.$stats = null;
 
-        this.connectedBoards = [];
-
         this.selectedSquare = null;
         this.dragging = false;
 
         if (src) {
             const {board, move} = src;
-            const {game, index} = board;
-
-            this.connectedBoards.push(board);
+            const {game} = board;
 
             this.initBoard(game.rows, game.cols);
-            this.$board
-                .attr('data-src', board.id)
-                .attr('data-index', board.index + 1);
+            this.$board.attr('data-src', board.id); // used for inserting boards in a reasonable order (see insertBoard)
 
             this.game = new BishopsGame({src: {game, move}});
         } else {
@@ -82,14 +76,10 @@ class BishopsBoard {
         this.hookEvents();
 
         boards[this.game.hash] = this;
-        Object.values(boards).forEach((board) => {
-            board.game.updatePriors();
-            board.updateStats();
-        });
     }
 
     initBoard(rows, cols) {
-        this.$board = $(`<div class="board" id="b${Object.keys(boards).length}" data-index="0"></div>`);
+        this.$board = $(`<div class="board" id="b${Object.keys(boards).length}"></div>`);
         this.$stats = $('<div class="board-stats"></div>');
 
         for (let r = -1; r <= rows; r++) {
@@ -118,10 +108,10 @@ class BishopsBoard {
             .on('mouseover', '.square', ({currentTarget}) => {
                 const $square = $(currentTarget);
                 if ($square.hasClass('prior-move')) {
-                    const priorId = $square.attr('data-prior');
-                    const $priorBoard = $(`#${priorId}`);
-                    const key = this.getConnectionKey($priorBoard, this.$board);
-                    $priorBoard.add($svgLayer.find(`.${key}`)).addClass('prior');
+                    const priorHash = $square.attr('data-prior');
+                    const priorBoard = boards[priorHash];
+                    const key = this.getConnectionKey(this, priorBoard);
+                    priorBoard.$board.add($svgLayer.find(`.${key}`)).addClass('prior');
                 }
                 if (this.selectedSquare) {
                     return;
@@ -155,56 +145,67 @@ class BishopsBoard {
 
                 const newBoard = new BishopsBoard({src: {board: this, move}});
                 newBoard.insertBoard(this.getRow());
-                this.connectedBoards.push(newBoard);
+                this.game.connectedGames.push(newBoard.game);
 
-                const key = this.getConnectionKey(this.$board, newBoard.$board);
+                firstBoard.game.updateSequence();
+                Object.values(boards).forEach((board) => {
+                    board.game.updatePriors();
+                    board.renderStats();
+                });
+
+                const key = this.getConnectionKey(this, newBoard);
                 connections[key] = {
-                    $startBoard: this.$board,
+                    startBoard: this,
                     startLabel: this.formatCoords(...this.selectedSquare),
-                    $endBoard: newBoard.$board,
+                    endBoard: newBoard,
                     endLabel: this.formatCoords(...destSquare)
                 };
 
-                connectBoards();
+                drawConnections();
             })
             .on('click', '.prior-move', ({currentTarget}) => {
                 const $square = $(currentTarget);
                 const targetCoords = this.getCoords($square);
 
-                const priorId = $square.data('prior');
-                const $priorBoard = $(`#${priorId}`);
+                const priorHash = $square.data('prior');
+                const priorBoard = boards[priorHash];
 
-                const key = this.getConnectionKey($priorBoard, this.$board);
-                if (connections[key]) return;
+                const key = this.getConnectionKey(this, priorBoard);
+                if (connections[key]) return; // connection already established
+
+                // Create two-way link between games
+                this.game.connectedGames.push(priorBoard.game);
+                priorBoard.game.connectedGames.push(this.game);
+
+                // Re-sequence games based on new connections
+                firstBoard.game.updateSequence();
+                Object.values(boards).forEach((board) => board.renderStats());
 
                 const rowIdx = this.getRowIdx();
-                const priorIdx = this.getRowIdx($priorBoard);
+                const priorIdx = this.getRowIdx(priorBoard.$board);
 
                 // Determine start & end based on row order, from top to bottom
-                let $startBoard, startLabel, $endBoard, endLabel;
+                let startBoard, startLabel, endBoard, endLabel;
                 if (rowIdx > priorIdx) {
-                    $startBoard = $priorBoard;
+                    startBoard = priorBoard;
                     startLabel = this.formatCoords(...targetCoords);
-                    $endBoard = this.$board;
+                    endBoard = this;
                     endLabel = this.formatCoords(...this.selectedSquare);
                 } else {
-                    $startBoard = this.$board;
+                    startBoard = this;
                     startLabel = this.formatCoords(...this.selectedSquare);
-                    $endBoard = $priorBoard;
+                    endBoard = priorBoard;
                     endLabel = this.formatCoords(...targetCoords);
                 }
 
-                $endBoard.attr('data-index', parseInt($startBoard.attr('data-index')) + 1);
-                Object.values(boards).forEach((board) => board.updateStats());
-
                 connections[key] = {
-                    $startBoard,
+                    startBoard,
                     startLabel,
-                    $endBoard,
+                    endBoard,
                     endLabel
                 };
 
-                connectBoards();
+                drawConnections();
             })
             .on('mousedown', (e) => {
                 this.dragging = e.pageX;
@@ -214,7 +215,7 @@ class BishopsBoard {
                     const deltaX = e.pageX - this.dragging;
                     this.$board.add(this.$stats).css('left', `+=${deltaX}`);
                     this.dragging = e.pageX;
-                    connectBoards();
+                    updateConnections();
                 }
             })
             .on('mouseup', () => {
@@ -244,8 +245,7 @@ class BishopsBoard {
             $moveSquare.addClass(`${type}-move`);
 
             if (type === 'prior') {
-                const priorBoard = boards[move.result];
-                $moveSquare.attr('data-prior', priorBoard.id);
+                $moveSquare.attr('data-prior', move.result);
             }
         });
     }
@@ -275,8 +275,8 @@ class BishopsBoard {
             $rowBoards.each((idx, board) => {
                 const $board = $(board);
                 if (srcIdx < getSrcIdx($board)) {
-                    $board.before($wrappedBoard);
-                    return false;
+                    $board.closest('.board-wrapper').before($wrappedBoard);
+                    return false; // break
                 } else if (idx === $rowBoards.length - 1) {
                     $nextRow.append($wrappedBoard);
                 }
@@ -300,9 +300,9 @@ class BishopsBoard {
         }
     }
 
-    updateStats() {
+    renderStats() {
         this.$stats.html(
-            `<div class="stats-row"><i class="fa fa-fw fa-hashtag"></i> &nbsp;${this.index}</div>` +
+            `<div class="stats-row"><i class="fa fa-fw fa-hashtag"></i> &nbsp;${this.game.index}</div>` +
             `<div class="stats-row"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${this.game.exploredOptions} / ${this.game.totalOptions}</div>`
         );
     }
@@ -331,7 +331,7 @@ class BishopsBoard {
         return `${formattedRow}${formattedCol}`;
     }
 
-    getConnectionKey($board1, $board2) {
+    getConnectionKey({$board: $board1}, {$board: $board2}) {
         // Ensure a consistent ordering of IDs, regardless of which board initiates the connection
         return [$board1, $board2]
             .sort(($b1, $b2) => this.getRowIdx($b1) > this.getRowIdx($b2) ? 1 : -1)
@@ -342,13 +342,6 @@ class BishopsBoard {
     get id() {
         return this.$board.attr('id');
     }
-
-    get index() {
-        return parseInt(this.$board.attr('data-index'));
-    }
-    set index(idx) {
-        this.$board.attr('data-index', idx);
-    }
 }
 
 /* Game logic */
@@ -357,10 +350,17 @@ class BishopsGame {
     constructor({rows, cols, src}) {
         this.state = [];
 
+        this.connectedGames = [];
+        this.index = 0;
+
+        this.exploredOptions = 0;
+        this.totalOptions = 0;
+
         if (src) {
             const {game, move} = src;
             this.state = JSON.parse(JSON.stringify(game.state));
             this.applyMove(move);
+            this.connectedGames.push(game);
         } else {
             this.initializeGame(rows, cols);
         }
@@ -420,6 +420,19 @@ class BishopsGame {
                 }
             }
         }
+    }
+
+    updateSequence() {
+        // Special behavior for first game: reset all other indices before calculating
+        if (this.index === 0) {
+            Object.values(boards)
+                .filter(({game}) => game !== this)
+                .forEach(({game}) => game.index = -1);
+        }
+
+        const gamesToVisit = this.connectedGames.filter((game) => game.index === -1 || game.index > this.index + 1);
+        gamesToVisit.forEach((game) => game.index = this.index + 1);
+        gamesToVisit.forEach((game) => game.updateSequence()); // recurse
     }
 
     // Mark valid move options as prior, if they lead to a game state that already exists; count unexplored options
@@ -488,7 +501,11 @@ class BishopsGame {
     }
 
     get hash() {
-        return this.state.map((row) => row.map((square) => square.occupiedBy || '-').join('')).join('');
+        return this.state
+            .map((row) => row
+                .map(({occupiedBy}) => (occupiedBy || '-')[0])
+                .join(''))
+            .join('');
     }
     get rows() {
         return this.state.length;
@@ -508,11 +525,13 @@ function createSvg(element) {
     return document.createElementNS('http://www.w3.org/2000/svg', element);
 }
 
-function drawBezier({x: startX, y: startY}, {x: endX, y: endY}, controlDist = 40) {
+function drawBezier(start, end, controlDist = 40) {
     const path = createSvg('path');
-    return $(path)
-        .attr('d', `M ${startX} ${startY} C ${startX} ${startY + controlDist}, ${endX} ${endY - controlDist}, ${endX} ${endY}`)
-        .appendTo($svgLayer);
+    return updateBezier($(path), start, end, controlDist).appendTo($svgLayer);
+}
+function updateBezier($path, {x: startX, y: startY}, {x: endX, y: endY}, controlDist = 40) {
+    const coords = `M ${startX} ${startY} C ${startX} ${startY + controlDist}, ${endX} ${endY - controlDist}, ${endX} ${endY}`;
+    return $path.attr('d', coords);
 }
 
 function drawEllipse({x, y}, rX = 5, rY = 5, color = 'white') {
@@ -526,25 +545,79 @@ function drawEllipse({x, y}, rX = 5, rY = 5, color = 'white') {
         .appendTo($svgLayer);
 }
 
-function drawRect({x, y}, width, height, radius = 0, color = 'white') {
+function drawRect(coords, width, height, radius = 0, color = 'white') {
     const rect = createSvg('rect');
-    return $(rect)
-        .attr('x', x)
-        .attr('y', y)
+    return updateRect($(rect), coords)
         .attr('width', width)
         .attr('height', height)
         .attr('rx', radius)
         .attr('fill', color)
         .appendTo($svgLayer);
 }
-
-function drawText({x, y}, content) {
-    const text = createSvg('text');
-    return $(text)
+function updateRect($rect, {x, y}) {
+    return $rect
         .attr('x', x)
-        .attr('y', y)
+        .attr('y', y);
+}
+
+function drawText(coords, content) {
+    const text = createSvg('text');
+    return updateText($(text), coords)
         .html(content)
         .appendTo($svgLayer);
+}
+function updateText($text, {x, y}) {
+    return $text
+        .attr('x', x)
+        .attr('y', y);
+}
+
+function drawConnections() {
+    clearSvg();
+    const labels = [];
+    Object.entries(connections).forEach(([key, {startBoard, startLabel, endBoard, endLabel}]) => {
+        const bottom = getBoardBottom(startBoard.$board);
+        const top = getBoardTop(endBoard.$board);
+
+        const $path = drawBezier(bottom, top).addClass(key);
+        connections[key].$path = $path;
+
+        const indexDelta = endBoard.game.index - startBoard.game.index;
+        labels.push({
+            key,
+            startLabel,
+            endLabel,
+            direction: (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←',
+            midpoint: getMidpoint(bottom, top)
+        });
+    });
+
+    // Draw labels on top of connections (z-index won't work)
+    labels.forEach(({key, startLabel, endLabel, direction, midpoint}) => {
+        connections[key].$rect = drawRect(
+            {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
+            LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
+        ).addClass(key);
+        connections[key].$text = drawText(midpoint, `${startLabel} ${direction} ${endLabel}`).addClass(key);
+    });
+}
+
+function updateConnections() {
+    Object.values(connections).forEach((c) => {
+        const bottom = getBoardBottom(c.startBoard.$board);
+        const top = getBoardTop(c.endBoard.$board);
+        const midpoint = getMidpoint(bottom, top);
+
+        updateBezier(c.$path, bottom, top);
+        updateText(c.$text, midpoint);
+        updateRect(c.$rect, {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2});
+    });
+}
+
+/* Utility methods */
+
+function oppositeColor(color) {
+    return (color === 'white') ? 'black' : 'white';
 }
 
 function getBoardTop($board) {
@@ -563,36 +636,4 @@ function getBoardBottom($board) {
 
 function getMidpoint(start, end) {
     return {x: (start.x + end.x) / 2, y: (start.y + end.y) / 2};
-}
-
-function connectBoards() {
-    clearSvg();
-    const labels = [];
-    Object.entries(connections).forEach(([key, {$startBoard, $endBoard, startLabel, endLabel}]) => {
-        const bottom = getBoardBottom($startBoard);
-        const top = getBoardTop($endBoard);
-        drawBezier(bottom, top).addClass(key);
-
-        if (showCoords) {
-            labels.push({
-                midpoint: getMidpoint(bottom, top),
-                startLabel,
-                endLabel,
-                key
-            });
-        }
-    });
-
-    labels.forEach(({midpoint, startLabel, endLabel, key}) => {
-        drawRect(
-            {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
-            LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
-        ).addClass(key);
-        drawText(midpoint, `${startLabel} → ${endLabel}`).addClass(key);
-    });
-}
-
-/* Utility methods */
-function oppositeColor(color) {
-    return (color === 'white') ? 'black' : 'white';
 }

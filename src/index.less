@@ -21,12 +21,18 @@ body {
 #state-graph {
     position: relative;
 
-    &.no-borders {
+    &.show-moves {
         .board {
-            box-shadow: @squareSize/20 @squareSize/13 0 @squareSize/20 darken(@darkSquare, 30%);
+            box-shadow: 0 0 0 2px black;
         }
         .border-square {
-            display: none;
+            display: inline-block;
+        }
+
+        #svg-layer {
+            text, rect {
+                display: block;
+            }
         }
     }
 
@@ -58,6 +64,8 @@ body {
     display: inline-block;
     position: relative;
 
+    pointer-events: none;
+
     .board-stats {
         display: none;
 
@@ -86,14 +94,16 @@ body {
 .board {
     display: inline-block;
     position: relative;
+
     cursor: move;
+    pointer-events: all;
 
     margin: 0 24px;
 
     border-radius: @squareSize/10;
     overflow: hidden;
 
-    box-shadow: 0 0 0 2px black;
+    box-shadow: @squareSize/20 @squareSize/13 0 @squareSize/20 darken(@darkSquare, 30%);
 
     // Checkered colors, independent of board size
     .board-row:nth-last-child(odd) .square:nth-last-child(odd),
@@ -112,8 +122,9 @@ body {
     }
 
     .border-square {
+        display: none;
+
         position: relative;
-        display: inline-block;
         background-color: darken(@bgColor, 12%);
         width: @squareSize;
         height: @borderWidth;
@@ -245,6 +256,8 @@ body {
     }
 
     text {
+        display: none;
+
         fill: white;
         font-size: @fontSize;
         font-family: sans-serif;
@@ -257,6 +270,8 @@ body {
     }
 
     rect {
+        display: none;
+
         fill: @bgColor;
         stroke: white;
         stroke-width: 2px;
