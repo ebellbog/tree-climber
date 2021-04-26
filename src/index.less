@@ -44,21 +44,23 @@ body {
 
     font-size: 20px;
 
-    color: fade(white, 60%);
+    color: fade(white, 50%);
 
     &:hover {
         color: white;
+        background-color: fade(white, 15%);
     }
 }
 #show-btn {
     opacity: 1;
-    transition: opacity .1s;
-    transition-delay: .6s;
+    transition: opacity .2s;
+    transition-delay: .45s;
 }
 #hide-btn {
     position: absolute;
     right: 4px;
     left: auto;
+    background-color: transparent;
 }
 
 #settings {
@@ -66,15 +68,79 @@ body {
 
     position: fixed;
     top: 0;
-    left: -250px;
+    left: -320px;
 
-    width: 250;
+    width: 300px;
     height: 500px;
+    overflow: hidden;
 
-    background-color: fade(black, 60%);
+    background-color: fade(black, 50%);
     border-bottom-right-radius: 5px;
 
-    transition: left .75s;
+    transition: left .65s;
+
+    color: white;
+    font-family: sans-serif;
+
+
+    select, .btn-group {
+        border-radius: 3px;
+    }
+
+    .settings-header {
+        background-color: lighten(saturate(@bgColor, 15%), 8%);
+        width: 100%;
+
+        label {
+            font-weight: bold;
+            margin-left: 6px;
+        }
+        select {
+            padding: 5px 8px;
+            margin: 8px 3px;
+            font-size: 14px;
+        }
+
+        box-shadow: 2px 0 6px black;
+    }
+
+    .settings-description {
+        margin: 12px;
+        font-size: 15px;
+    }
+
+    .btn-wrapper {
+        text-align: center;
+        width: 100%;
+    }
+    .btn-group {
+        margin-top: 8px;
+        border: 2px solid white;
+        display: inline-block;
+
+        .btn {
+            width: 80px;
+            padding: 4px 0;
+            margin: 0;
+
+            float: left;
+
+            cursor: pointer;
+            user-select: none;
+
+            text-transform: uppercase;
+            font-size: 12px;
+
+            &:hover {
+                background-color: fade(white, 20%);
+            }
+
+            &.active {
+                background-color: white;
+                color: black;
+            }
+        }
+    }
 }
 
 #state-graph {
