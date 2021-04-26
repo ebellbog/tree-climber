@@ -16,6 +16,65 @@ body {
     margin: 0;
     padding: 0;
     background-color: @bgColor;
+
+    &.show-settings {
+        #settings {
+            left: 0;
+            box-shadow: 0 0 6px fade(black, 50%);
+
+        }
+        #show-btn {
+            opacity: 0;
+            transition: none;
+        }
+    }
+}
+
+.settings-btn {
+    z-index: 2;
+
+    position: fixed;
+    top: 4px;
+    left: 4px;
+
+    cursor: pointer;
+
+    border-radius: 20px;
+    padding: 8px 9px;
+
+    font-size: 20px;
+
+    color: fade(white, 60%);
+
+    &:hover {
+        color: white;
+    }
+}
+#show-btn {
+    opacity: 1;
+    transition: opacity .1s;
+    transition-delay: .6s;
+}
+#hide-btn {
+    position: absolute;
+    right: 4px;
+    left: auto;
+}
+
+#settings {
+    z-index: 3;
+
+    position: fixed;
+    top: 0;
+    left: -250px;
+
+    width: 250;
+    height: 500px;
+
+    background-color: fade(black, 60%);
+    border-bottom-right-radius: 5px;
+
+    transition: left .75s;
 }
 
 #state-graph {

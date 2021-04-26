@@ -45,6 +45,10 @@ $(document).ready(() => {
             }
         })
         .on('resize', updateConnections);
+
+    $('.settings-btn').on('click', () => {
+        $('body').toggleClass('show-settings');
+    });
 });
 
 /* DOM methods */
