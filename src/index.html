@@ -2,12 +2,16 @@
     <head>
         <title> Game Tree Explorer </title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <script defer="" src="https://use.fontawesome.com/releases/v5.0.13/js/all.js"></script>
+        <script defer="" src="https://use.fontawesome.com/releases/v5.10.0/js/all.js"></script>
     </head>
     <body>
-        <div id="show-btn" class="settings-btn" title="Show help & settings"><i class="fa fa-bars"></i></div>
+        <div id="btn-bar">
+            <div id="show-settings" class="btn" title="Show help & settings"><i class="fa fa-bars"></i></div>
+            <div id="reset-game" class="btn" title="Reset game"><i class="fa fa-undo"></i></div>
+            <div id="reset-layout" class="btn" title="Reset layout"><i class="fas fa-border-all"></i></div>
+        </div>
         <div id="settings">
-            <div id="hide-btn" class="settings-btn" title="Hide"><i class="fa fa-times"></i></div>
+            <div id="hide-settings" class="btn" title="Hide"><i class="fa fa-times"></i></div>
             <div class="settings-header">
                 <label>Game: </label>
                 <select>
@@ -22,8 +26,8 @@
             </div>
             <div class="btn-wrapper">
                 <div class="btn-group">
-                    <div class="btn active">Help</div>
-                    <div class="btn">Settings</div>
+                    <div class="toggle-btn active">Help</div>
+                    <div class="toggle-btn">Settings</div>
                 </div>
             </div>
         </div>

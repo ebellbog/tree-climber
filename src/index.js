@@ -14,19 +14,14 @@ const LABEL_RADIUS = 12;
 /* Globals */
 
 const $svgLayer = $('#svg-layer');
+const $stateGraph = $('#state-graph');
 
-const boards = {};
-const connections = {};
-let firstBoard = null;
+let boards, connections, firstBoard;
 
 /* Initialization & event hooks */
 
 $(document).ready(() => {
-    firstBoard = new BishopsBoard({rows: NUM_ROWS, cols: NUM_COLS});
-    firstBoard.insertBoard($('.row'));
-
-    firstBoard.game.updatePriors();
-    firstBoard.renderStats();
+    resetGame();
 
     document.addEventListener('scroll', ({target}) => { // Can't listen via jQuery because scroll events don't bubble up
         if ($(target).hasClass('row')) {
@@ -37,19 +32,39 @@ $(document).ready(() => {
     $(window)
         .on('keypress', ({which}) => {
             if (which === 32) {
-                $('#state-graph').toggleClass('show-moves');
+                $stateGraph.toggleClass('show-moves');
                 updateConnections();
             } else if (which === 13) {
-                $('#state-graph').toggleClass('show-stats');
+                $stateGraph.toggleClass('show-stats');
                 updateConnections();
             }
         })
         .on('resize', updateConnections);
 
-    $('.settings-btn').on('click', () => {
+    $('#show-settings, #hide-settings').on('click', () => {
         $('body').toggleClass('show-settings');
     });
+    $('#reset-layout').on('click', () => {
+        $stateGraph.find('.board').css('left', 0);
+        $stateGraph.find('.board-stats').css('left', -24);
+        updateConnections();
+    });
+    $('#reset-game').on('click', resetGame);
 });
+
+function resetGame() {
+    boards = {};
+    connections = {};
+
+    $stateGraph.find('.row:not(:first-child), .board-wrapper').remove();
+    $svgLayer.empty();
+
+    firstBoard = new BishopsBoard({rows: NUM_ROWS, cols: NUM_COLS});
+    firstBoard.insertBoard($('.row:first-child'));
+
+    firstBoard.game.updatePriors();
+    firstBoard.renderStats();
+}
 
 /* DOM methods */
 

@@ -30,13 +30,18 @@ body {
     }
 }
 
-.settings-btn {
-    z-index: 2;
+#btn-bar {
+    z-index: 1;
+    position: absolute;
+    top: 0;
 
-    position: fixed;
-    top: 4px;
-    left: 4px;
+    box-sizing: border-box;
 
+    width: 100%;
+    padding: 4px;
+}
+
+.btn {
     cursor: pointer;
 
     border-radius: 20px;
@@ -51,16 +56,22 @@ body {
         background-color: fade(white, 15%);
     }
 }
-#show-btn {
+
+#show-settings {
+    float: left;
+
     opacity: 1;
     transition: opacity .2s;
     transition-delay: .45s;
 }
-#hide-btn {
-    position: absolute;
-    right: 4px;
-    left: auto;
+#hide-settings {
+    float: right;
+    margin-top: 4px;
+
     background-color: transparent;
+}
+#reset-game, #reset-layout {
+    float: right;
 }
 
 #settings {
@@ -89,11 +100,14 @@ body {
 
     .settings-header {
         background-color: lighten(saturate(@bgColor, 15%), 8%);
+
         width: 100%;
+        padding: 0 6px;
+
+        box-sizing: border-box;
 
         label {
             font-weight: bold;
-            margin-left: 6px;
         }
         select {
             padding: 5px 8px;
@@ -118,7 +132,7 @@ body {
         border: 2px solid white;
         display: inline-block;
 
-        .btn {
+        .toggle-btn {
             width: 80px;
             padding: 4px 0;
             margin: 0;
@@ -132,7 +146,7 @@ body {
             font-size: 12px;
 
             &:hover {
-                background-color: fade(white, 20%);
+                background-color: fade(white, 25%);
             }
 
             &.active {
