@@ -2,6 +2,8 @@
     <head>
         <title> Game Tree Explorer </title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@200;400;600&display=swap" rel="stylesheet">
         <script defer="" src="https://use.fontawesome.com/releases/v5.10.0/js/all.js"></script>
     </head>
     <body>
@@ -11,7 +13,6 @@
             <div id="reset-layout" class="btn" title="Reset layout"><i class="fas fa-border-all"></i></div>
         </div>
         <div id="settings">
-            <div id="hide-settings" class="btn" title="Hide"><i class="fa fa-times"></i></div>
             <div class="settings-header">
                 <label>Game: </label>
                 <select>
@@ -19,6 +20,7 @@
                     <option value="knights">The Knights Puzzle</option>
                     <option value="queens">The N-Queens Problem</option>
                 </select>
+                <div id="hide-settings" class="btn" title="Hide"><i class="fa fa-times"></i></div>
             </div>
             <div class="settings-description">
                 A classic chess puzzle, featured in <i>The 7th Guest</i>, in which the goal is for the black and white bishops to switch places.

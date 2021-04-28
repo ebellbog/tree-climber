@@ -17,6 +17,9 @@ body {
     padding: 0;
     background-color: @bgColor;
 
+    font-family: 'Titillium Web', sans-serif;
+    font-weight: 200;
+
     &.show-settings {
         #settings {
             left: 0;
@@ -38,7 +41,7 @@ body {
     box-sizing: border-box;
 
     width: 100%;
-    padding: 4px;
+    padding: 4px 2px;
 }
 
 .btn {
@@ -46,6 +49,7 @@ body {
 
     border-radius: 20px;
     padding: 8px 9px;
+    margin: 0 2px;
 
     font-size: 20px;
 
@@ -66,7 +70,8 @@ body {
 }
 #hide-settings {
     float: right;
-    margin-top: 4px;
+    margin: 7px 0 0 0;
+    padding-right: 0;
 
     background-color: transparent;
 }
@@ -91,8 +96,6 @@ body {
     transition: left .65s;
 
     color: white;
-    font-family: sans-serif;
-
 
     select, .btn-group {
         border-radius: 3px;
@@ -102,33 +105,37 @@ body {
         background-color: lighten(saturate(@bgColor, 15%), 8%);
 
         width: 100%;
-        padding: 0 6px;
+        padding: 0 10px;
 
         box-sizing: border-box;
 
         label {
-            font-weight: bold;
+            font-weight: 600;
         }
         select {
             padding: 5px 8px;
             margin: 8px 3px;
+
             font-size: 14px;
+            font-weight: 400;
+            font-family: 'Titillium Web', sans-serif;
         }
 
         box-shadow: 2px 0 6px black;
     }
 
     .settings-description {
-        margin: 12px;
+        margin: 12px 9px;
         font-size: 15px;
+        letter-spacing: .5px;
     }
 
     .btn-wrapper {
         text-align: center;
         width: 100%;
+        margin: 22px 0;
     }
     .btn-group {
-        margin-top: 8px;
         border: 2px solid white;
         display: inline-block;
 
@@ -144,6 +151,8 @@ body {
 
             text-transform: uppercase;
             font-size: 12px;
+            font-weight: 400;
+            letter-spacing: 1px;
 
             &:hover {
                 background-color: fade(white, 25%);
@@ -166,6 +175,7 @@ body {
         }
         .border-square {
             display: inline-block;
+            font-weight: 600;
         }
 
         #svg-layer {
@@ -220,7 +230,6 @@ body {
         background-color: lighten(@bgColor, 30%);
         color: white;
 
-        font-family: sans-serif;
         font-size: @fontSize;
         text-align: left;
 
@@ -276,7 +285,6 @@ body {
 
             color: white;
             opacity: 0.65;
-            font-family: sans-serif;
             font-size: @borderWidth*.8;
         }
 
@@ -399,7 +407,7 @@ body {
 
         fill: white;
         font-size: @fontSize;
-        font-family: sans-serif;
+        font-weight: 400;
         text-anchor: middle;
         dominant-baseline: central;
 
