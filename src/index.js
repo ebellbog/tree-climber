@@ -15,6 +15,7 @@ const $stateGraph = $('#state-graph');
 
 let numRows = 4;
 let numCols = 5;
+let showPieces = 'all';
 
 let boards, connections, firstBoard;
 
@@ -53,6 +54,10 @@ $(document).ready(() => {
         $stateGraph.toggleClass('show-stats', this.checked);
         updateConnections();
     });
+    $('#show-pieces').on('change', function() {
+        showPieces = this.value;
+        resetGame();
+    });
 
     $('#num-rows').on('change', function() {
         const newRows = parseInt(this.value);
@@ -84,7 +89,7 @@ function resetGame() {
     $stateGraph.find('.row:not(:first-child), .board-wrapper').remove();
     $svgLayer.empty();
 
-    firstBoard = new BishopsBoard({rows: numRows, cols: numCols});
+    firstBoard = new BishopsBoard({rows: numRows, cols: numCols, pieces: showPieces});
     firstBoard.insertBoard($('.row:first-child'));
 
     firstBoard.game.updatePriors();
@@ -94,7 +99,7 @@ function resetGame() {
 /* DOM methods */
 
 class BishopsBoard {
-    constructor({rows, cols, src}) {
+    constructor({rows, cols, pieces, src}) {
         this.$board = null;
         this.$stats = null;
 
@@ -111,7 +116,7 @@ class BishopsBoard {
             this.game = new BishopsGame({src: {game, move}});
         } else {
             this.initBoard(rows, cols);
-            this.game = new BishopsGame({rows, cols});
+            this.game = new BishopsGame({rows, cols, pieces});
         }
 
         this.game.analyzeGame();
@@ -151,7 +156,7 @@ class BishopsBoard {
         this.$board
             .on('mouseover', '.square', ({currentTarget}) => {
                 const $square = $(currentTarget);
-                if ($square.hasClass('prior-move')) {
+                if ($square.is('.prior-connected-move, .prior-explored-move')) {
                     const priorHash = $square.attr('data-prior');
                     const priorBoard = boards[priorHash];
                     const key = this.getConnectionKey(this, priorBoard);
@@ -189,7 +194,8 @@ class BishopsBoard {
 
                 const newBoard = new BishopsBoard({src: {board: this, move}});
                 newBoard.insertBoard(this.getRow());
-                this.game.connectedGames.push(newBoard.game);
+
+                this.game.connectGame(newBoard.game);
 
                 firstBoard.game.updateSequence();
                 Object.values(boards).forEach((board) => {
@@ -207,19 +213,22 @@ class BishopsBoard {
 
                 drawConnections();
             })
-            .on('click', '.prior-move', ({currentTarget}) => {
+            .on('click', '.prior-explored-move', ({currentTarget}) => {
                 const $square = $(currentTarget);
                 const targetCoords = this.getCoords($square);
 
                 const priorHash = $square.data('prior');
                 const priorBoard = boards[priorHash];
 
-                const key = this.getConnectionKey(this, priorBoard);
-                if (connections[key]) return; // connection already established
-
                 // Create two-way link between games
-                this.game.connectedGames.push(priorBoard.game);
-                priorBoard.game.connectedGames.push(this.game);
+                this.game.connectGame(priorBoard.game);
+                priorBoard.game.connectGame(this.game);
+
+                // Update priors
+                [this, priorBoard].forEach((board) => {
+                    board.game.updatePriors();
+                    board.renderStats();
+                });
 
                 // Re-sequence games based on new connections
                 firstBoard.game.updateSequence();
@@ -242,6 +251,7 @@ class BishopsBoard {
                     endLabel = this.formatCoords(...targetCoords);
                 }
 
+                const key = this.getConnectionKey(this, priorBoard);
                 connections[key] = {
                     startBoard,
                     startLabel,
@@ -272,7 +282,7 @@ class BishopsBoard {
     clearSelection() {
         this.selectedSquare = null;
 
-        const classesToRemove = ['valid-move', 'invalid-move', 'prior-move', 'selected', 'prior'];
+        const classesToRemove = ['valid-move', 'invalid-move', 'prior-connected-move', 'prior-explored-move', 'prior', 'selected'];
         $('body')
             .find(classesToRemove.map((c) => `.${c}`).join(','))
             .removeClass(classesToRemove.join(' '));
@@ -288,7 +298,7 @@ class BishopsBoard {
             const {type} = move;
             $moveSquare.addClass(`${type}-move`);
 
-            if (type === 'prior') {
+            if (type.includes('prior')) {
                 $moveSquare.attr('data-prior', move.result);
             }
         });
@@ -345,9 +355,12 @@ class BishopsBoard {
     }
 
     renderStats() {
+        const ratio = `${this.game.exploredOptions} / ${this.game.totalOptions}`;
+        const statsClass = (this.game.exploredOptions === this.game.totalOptions) ? 'complete' :
+            (this.game.connectedOptions < this.game.exploredOptions) ? 'missing-connection' : '';
         this.$stats.html(
             `<div class="stats-row"><i class="fa fa-fw fa-hashtag"></i> &nbsp;${this.game.index}</div>` +
-            `<div class="stats-row"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${this.game.exploredOptions} / ${this.game.totalOptions}</div>`
+            `<div class="stats-row ${statsClass}"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${ratio}</div>`
         );
     }
 
@@ -391,12 +404,13 @@ class BishopsBoard {
 /* Game logic */
 
 class BishopsGame {
-    constructor({rows, cols, src}) {
+    constructor({rows, cols, pieces, src}) {
         this.state = [];
 
-        this.connectedGames = [];
+        this.connectedGames = {};
         this.index = 0;
 
+        this.connectedOptions = 0;
         this.exploredOptions = 0;
         this.totalOptions = 0;
 
@@ -404,13 +418,16 @@ class BishopsGame {
             const {game, move} = src;
             this.state = JSON.parse(JSON.stringify(game.state));
             this.applyMove(move);
-            this.connectedGames.push(game);
+            this.connectedGames[game.hash] = game;
         } else {
-            this.initializeGame(rows, cols);
+            this.initializeGame(rows, cols, pieces);
         }
     }
 
-    initializeGame(rows, cols) {
+    initializeGame(rows, cols, pieces) {
+        const getSquareColor = (r, c) => ((rows - r) + (cols - c)) % 2 ? 'white' : 'black';
+        const getBishopColor = (r, c) => (c === 0) ? 'black' : (c === cols - 1) ? 'white' : null;
+
         for (let r = 0; r < rows; r++) {
             const row = [];
             for (let c = 0; c < cols; c++) {
@@ -420,7 +437,7 @@ class BishopsGame {
                         black: false
                     },
                     moveOptions: [],
-                    occupiedBy: (c === 0) ? 'black' : (c === cols - 1) ? 'white' : null
+                    occupiedBy: (pieces === 'all' || getSquareColor(r, c) === pieces) ? getBishopColor(r, c) : null
                 });
             }
             this.state.push(row);
@@ -466,6 +483,10 @@ class BishopsGame {
         }
     }
 
+    connectGame(game) {
+        this.connectedGames[game.hash] = game;
+    }
+
     updateSequence() {
         // Special behavior for first game: reset all other indices before calculating
         if (this.index === 0) {
@@ -474,15 +495,17 @@ class BishopsGame {
                 .forEach(({game}) => game.index = -1);
         }
 
-        const gamesToVisit = this.connectedGames.filter((game) => game.index === -1 || game.index > this.index + 1);
+        const gamesToVisit = Object.values(this.connectedGames).filter((game) => game.index === -1 || game.index > this.index + 1);
         gamesToVisit.forEach((game) => game.index = this.index + 1);
         gamesToVisit.forEach((game) => game.updateSequence()); // recurse
     }
 
     // Mark valid move options as prior, if they lead to a game state that already exists; count unexplored options
     updatePriors() {
+        this.connectedOptions = 0;
         this.exploredOptions = 0;
         this.totalOptions = 0;
+
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const {moveOptions} = this.state[r][c];
@@ -495,8 +518,13 @@ class BishopsGame {
                     if (move.type !== 'invalid') {
                         this.totalOptions++;
                         if (boards[move.result]) {
-                            move.type = 'prior';
                             this.exploredOptions++;
+                            if (this.connectedGames[move.result]) {
+                                this.connectedOptions++;
+                                move.type = 'prior-connected';
+                            } else {
+                                move.type = 'prior-explored';
+                            }
                         }
                     }
                 }

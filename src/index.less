@@ -11,6 +11,7 @@
 @priorColor: gold;
 
 @bgColor: #7c3636;
+@dlgColor: fade(black, 50%);
 
 @defaultFont: 'Titillium Web', sans-serif;
 
@@ -37,7 +38,7 @@ body {
 
 #btn-bar {
     z-index: 1;
-    position: absolute;
+    position: fixed;
     top: 0;
 
     box-sizing: border-box;
@@ -91,7 +92,9 @@ body {
     width: 300px;
     overflow: hidden;
 
-    background-color: fade(black, 50%);
+    background-color: @dlgColor;
+    backdrop-filter: blur(3px);
+
     border-bottom-right-radius: 5px;
 
     transition: left .65s;
@@ -225,7 +228,7 @@ body {
 
         .toggle-btn {
             width: 80px;
-            padding: 4px 0;
+            padding: 3px 0;
             margin: 0;
 
             float: left;
@@ -311,7 +314,7 @@ body {
 
         border-radius: 4px;
 
-        background-color: lighten(@bgColor, 30%);
+        background-color: @dlgColor;
         color: white;
 
         font-size: @fontSize;
@@ -319,6 +322,15 @@ body {
 
         .stats-row {
             margin: 6px 0;
+
+            &.complete {
+                font-weight: 600;
+                color: red;
+            }
+            &.missing-connection {
+                font-weight: 600;
+                color: @priorColor;
+            }
         }
     }
 }
@@ -420,8 +432,18 @@ body {
         &.invalid-move {
             background-color: @invalidColor!important;
         }
-        &.prior-move {
+        &.prior-connected-move {
             background-color: @priorColor!important;
+            cursor: pointer;
+        }
+        &.prior-explored-move {
+            background: repeating-linear-gradient(
+                -45deg,
+                @priorColor,
+                @priorColor 1px,
+                fade(black, 25%) 1px,
+                fade(black, 25%) 3.5px
+            );
             cursor: pointer;
         }
 
