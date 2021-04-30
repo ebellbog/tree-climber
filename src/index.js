@@ -17,6 +17,7 @@ let numRows = 4;
 let numCols = 5;
 let showPieces = 'all';
 
+let scrollTop, scrollLeft;
 let boards, connections, firstBoard;
 
 /* Initialization & event hooks */
@@ -24,23 +25,10 @@ let boards, connections, firstBoard;
 $(document).ready(() => {
     resetGame();
 
-    document.addEventListener('scroll', ({target}) => { // Can't listen via jQuery because scroll events don't bubble up
-        if ($(target).hasClass('row')) {
-            updateConnections();
-        }
-    }, true);
+    $(window).on('resize', updateConnections);
 
-    $(window)
-        .on('keypress', ({which}) => {
-            if (which === 32) {
-                $stateGraph.toggleClass('show-moves');
-                updateConnections();
-            } else if (which === 13) {
-                $stateGraph.toggleClass('show-stats');
-                updateConnections();
-            }
-        })
-        .on('resize', updateConnections);
+    $stateGraph.on('scroll', updateScroll);
+    updateScroll();
 
     $('#show-settings, #hide-settings').on('click', () => {
         $('body').toggleClass('show-settings');
@@ -75,12 +63,18 @@ $(document).ready(() => {
     });
 
     $('#reset-layout').on('click', () => {
-        $stateGraph.find('.board').css('left', 0);
-        $stateGraph.find('.board-stats').css('left', -24);
+        $stateGraph.find('.board').css({left: 0, top: 0});
+        $stateGraph.find('.board-stats').css({left: -24, top: 0});
         updateConnections();
     });
     $('#reset-game').on('click', resetGame);
 });
+
+// Cache these values for a very minor optimization when dragging
+function updateScroll() {
+    scrollTop = $stateGraph.scrollTop();
+    scrollLeft = $stateGraph.scrollLeft();
+}
 
 function resetGame() {
     boards = {};
@@ -217,7 +211,7 @@ class BishopsBoard {
                 const $square = $(currentTarget);
                 const targetCoords = this.getCoords($square);
 
-                const priorHash = $square.data('prior');
+                const priorHash = $square.attr('data-prior');
                 const priorBoard = boards[priorHash];
 
                 // Create two-way link between games
@@ -262,13 +256,15 @@ class BishopsBoard {
                 drawConnections();
             })
             .on('mousedown', (e) => {
-                this.dragging = e.pageX;
+                this.dragging = {x: e.pageX, y: e.pageY};
             })
             .on('mousemove', (e) => {
                 if (this.dragging) {
-                    const deltaX = e.pageX - this.dragging;
-                    this.$board.add(this.$stats).css('left', `+=${deltaX}`);
-                    this.dragging = e.pageX;
+                    this.$board.add(this.$stats).css({
+                        left: `+=${e.pageX - this.dragging.x}`,
+                        top: `+=${e.pageY - this.dragging.y}`
+                    });
+                    this.dragging = {x: e.pageX, y: e.pageY};
                     updateConnections();
                 }
             })
@@ -338,6 +334,11 @@ class BishopsBoard {
         } else {
             $nextRow.append($wrappedBoard);
         }
+
+        $svgLayer.css({
+            width: $stateGraph[0].scrollWidth,
+            height: $stateGraph[0].scrollHeight,
+        });
     }
 
     renderGame() {
@@ -356,8 +357,8 @@ class BishopsBoard {
 
     renderStats() {
         const ratio = `${this.game.exploredOptions} / ${this.game.totalOptions}`;
-        const statsClass = (this.game.exploredOptions === this.game.totalOptions) ? 'complete' :
-            (this.game.connectedOptions < this.game.exploredOptions) ? 'missing-connection' : '';
+        const statsClass =  (this.game.connectedOptions < this.game.exploredOptions) ? 'missing-connection' :
+            (this.game.exploredOptions === this.game.totalOptions) ? 'complete' : '';
         this.$stats.html(
             `<div class="stats-row"><i class="fa fa-fw fa-hashtag"></i> &nbsp;${this.game.index}</div>` +
             `<div class="stats-row ${statsClass}"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${ratio}</div>`
@@ -674,8 +675,8 @@ function drawConnections() {
     });
 }
 
-function updateConnections() {
-    Object.values(connections).forEach((c) => {
+function updateConnections(specificConnections) {
+    (specificConnections || Object.values(connections)).forEach((c) => {
         const bottom = getBoardBottom(c.startBoard.$board);
         const top = getBoardTop(c.endBoard.$board);
         const midpoint = getMidpoint(bottom, top);
@@ -696,14 +697,22 @@ function getBoardTop($board) {
     const {top, left} = $board.offset();
     const width = $board.outerWidth();
     const height = $board.outerHeight();
-    return {x: left + width/2, y: top - MARGIN};
+
+    return {
+        x: left + scrollLeft + width/2,
+        y: top + scrollTop - MARGIN
+    };
 }
 
 function getBoardBottom($board) {
     const {top, left} = $board.offset();
     const width = $board.outerWidth();
     const height = $board.outerHeight();
-    return {x: left + width/2, y: top + height + MARGIN}
+
+    return {
+        x: left + scrollLeft + width/2,
+        y: top + scrollTop + height + MARGIN
+    };
 }
 
 function getMidpoint(start, end) {
