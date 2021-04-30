@@ -36,10 +36,12 @@ $(document).ready(() => {
 
     $('#show-moves').on('change', function() {
         $stateGraph.toggleClass('show-moves', this.checked);
+        updateScroll();
         updateConnections();
     });
     $('#show-stats').on('change', function() {
         $stateGraph.toggleClass('show-stats', this.checked);
+        updateScroll();
         updateConnections();
     });
     $('#show-pieces').on('change', function() {
@@ -81,7 +83,9 @@ function resetGame() {
     connections = {};
 
     $stateGraph.find('.row:not(:first-child), .board-wrapper').remove();
-    $svgLayer.empty();
+    $svgLayer
+        .empty()
+        .css({width: '100%', height: '100%'});
 
     firstBoard = new BishopsBoard({rows: numRows, cols: numCols, pieces: showPieces});
     firstBoard.insertBoard($('.row:first-child'));
