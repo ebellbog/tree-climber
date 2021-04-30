@@ -2,9 +2,6 @@ import './index.less';
 
 /* Constants */
 
-const NUM_ROWS = 4;
-const NUM_COLS = 5;
-
 const MARGIN = 12;
 
 const LABEL_WIDTH = 78;
@@ -15,6 +12,9 @@ const LABEL_RADIUS = 12;
 
 const $svgLayer = $('#svg-layer');
 const $stateGraph = $('#state-graph');
+
+let numRows = 4;
+let numCols = 5;
 
 let boards, connections, firstBoard;
 
@@ -44,6 +44,31 @@ $(document).ready(() => {
     $('#show-settings, #hide-settings').on('click', () => {
         $('body').toggleClass('show-settings');
     });
+
+    $('#show-moves').on('change', function() {
+        $stateGraph.toggleClass('show-moves', this.checked);
+        updateConnections();
+    });
+    $('#show-stats').on('change', function() {
+        $stateGraph.toggleClass('show-stats', this.checked);
+        updateConnections();
+    });
+
+    $('#num-rows').on('change', function() {
+        const newRows = parseInt(this.value);
+        if (newRows !== numRows) {
+            numRows = newRows;
+            resetGame();
+        }
+    });
+    $('#num-cols').on('change', function() {
+        const newCols = parseInt(this.value);
+        if (newCols !== numCols) {
+            numCols = newCols;
+            resetGame();
+        }
+    });
+
     $('#reset-layout').on('click', () => {
         $stateGraph.find('.board').css('left', 0);
         $stateGraph.find('.board-stats').css('left', -24);
@@ -59,7 +84,7 @@ function resetGame() {
     $stateGraph.find('.row:not(:first-child), .board-wrapper').remove();
     $svgLayer.empty();
 
-    firstBoard = new BishopsBoard({rows: NUM_ROWS, cols: NUM_COLS});
+    firstBoard = new BishopsBoard({rows: numRows, cols: numCols});
     firstBoard.insertBoard($('.row:first-child'));
 
     firstBoard.game.updatePriors();

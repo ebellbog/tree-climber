@@ -102,6 +102,14 @@ body {
         border-radius: 3px;
     }
 
+    select {
+        padding: 5px 8px;
+
+        font-size: 14px;
+        font-weight: 400;
+        font-family: @defaultFont;
+    }
+
     .settings-header {
         background-color: lighten(saturate(@bgColor, 15%), 8%);
 
@@ -114,12 +122,7 @@ body {
             font-weight: 600;
         }
         select {
-            padding: 5px 8px;
             margin: 7px 3px;
-
-            font-size: 14px;
-            font-weight: 400;
-            font-family: @defaultFont;
         }
 
         box-shadow: 2px 0 6px black;
@@ -132,25 +135,17 @@ body {
     }
 
     .settings-content {
-        padding-bottom: 12px;
+        padding-bottom: 20px;
 
-        .input-group, .checkbox-group {
-            margin: 10px 20px;
-
-            &:first-child {
-                padding-top: 6px;
-            }
-
-            label {
-                display: inline-block;
-                font-weight: 400;
-            }
+        label {
+            display: inline-block;
+            font-weight: 400;
+            user-select: none;
+            width: 95px;
         }
 
         .input-group {
-            label {
-                margin-right: 10px;
-            }
+            padding: 7px 20px;
 
             > div {
                 display: inline-block;
@@ -175,6 +170,8 @@ body {
         }
 
         .checkbox-group {
+            padding: 10px 20px;
+
             .custom-checkbox {
                 margin-right: 6px;
                 position: relative;
@@ -212,7 +209,15 @@ body {
     .btn-wrapper {
         text-align: center;
         width: 100%;
-        margin: 22px 0;
+        padding: 22px 0;
+
+        hr {
+            display: inline-block;
+            width: 42px;
+            position: relative;
+            bottom: 15px;
+            margin: 0 8px;
+        }
     }
     .btn-group {
         border: 2px solid white;
