@@ -25,7 +25,7 @@ let boards, connections, firstBoard;
 $(document).ready(() => {
     resetGame();
 
-    $(window).on('resize', updateConnections);
+    $(window).on('resize', () => updateConnections());
 
     $stateGraph.on('scroll', updateScroll);
     updateScroll();
@@ -36,11 +36,13 @@ $(document).ready(() => {
 
     $('#show-moves').on('change', function() {
         $stateGraph.toggleClass('show-moves', this.checked);
+        updateLayout();
         updateScroll();
         updateConnections();
     });
     $('#show-stats').on('change', function() {
         $stateGraph.toggleClass('show-stats', this.checked);
+        updateLayout();
         updateScroll();
         updateConnections();
     });
@@ -67,6 +69,8 @@ $(document).ready(() => {
     $('#reset-layout').on('click', () => {
         $stateGraph.find('.board').css({left: 0, top: 0});
         $stateGraph.find('.board-stats').css({left: -24, top: 0});
+        updateLayout();
+        updateScroll();
         updateConnections();
     });
     $('#reset-game').on('click', resetGame);
@@ -78,14 +82,21 @@ function updateScroll() {
     scrollLeft = $stateGraph.scrollLeft();
 }
 
+function updateLayout() {
+    $svgLayer.css({width: '100%', height: '100%'});
+    $svgLayer.css({
+        width: $stateGraph[0].scrollWidth,
+        height: $stateGraph[0].scrollHeight,
+    });
+}
+
 function resetGame() {
     boards = {};
     connections = {};
 
     $stateGraph.find('.row:not(:first-child), .board-wrapper').remove();
-    $svgLayer
-        .empty()
-        .css({width: '100%', height: '100%'});
+    $svgLayer.empty()
+    updateLayout();
 
     firstBoard = new BishopsBoard({rows: numRows, cols: numCols, pieces: showPieces});
     firstBoard.insertBoard($('.row:first-child'));
@@ -274,6 +285,7 @@ class BishopsBoard {
             })
             .on('mouseup', () => {
                 this.dragging = false;
+                updateLayout();
             });
 
         $('body').on('click', () => this.clearSelection());
@@ -339,10 +351,7 @@ class BishopsBoard {
             $nextRow.append($wrappedBoard);
         }
 
-        $svgLayer.css({
-            width: $stateGraph[0].scrollWidth,
-            height: $stateGraph[0].scrollHeight,
-        });
+        updateLayout();
     }
 
     renderGame() {
