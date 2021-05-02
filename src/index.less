@@ -45,6 +45,21 @@ body {
 
     width: 100%;
     padding: 4px 2px;
+
+    h1 {
+        position: absolute;
+        top: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+
+        padding: 0;
+        margin: 0;
+
+        font-size: 24px;
+
+        color: fade(white, 90%);
+        filter: contrast(.1) brightness(5);
+    }
 }
 
 .btn {
@@ -276,7 +291,7 @@ body {
     }
 
     &.show-stats {
-        .board {
+        .board-wrapper {
             margin: 0 64px;
         }
         .board-stats {
@@ -298,13 +313,17 @@ body {
 
     pointer-events: none;
 
+    margin: 0 24px;
+
     .board-stats {
         display: none;
 
         z-index: 2;
         position: absolute;
         top: 0px;
-        left: -24px;
+        left: 0;
+
+        transform: translateX(-100%) translateX(-10px);
 
         padding: 0 10px;
 
@@ -337,8 +356,6 @@ body {
 
     cursor: move;
     pointer-events: all;
-
-    margin: 0 24px;
 
     border-radius: @squareSize/10;
     overflow: hidden;

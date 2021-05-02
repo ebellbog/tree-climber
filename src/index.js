@@ -67,8 +67,7 @@ $(document).ready(() => {
     });
 
     $('#reset-layout').on('click', () => {
-        $stateGraph.find('.board').css({left: 0, top: 0});
-        $stateGraph.find('.board-stats').css({left: -24, top: 0});
+        $stateGraph.find('.board-wrapper').css({left: 0, top: 0});
         updateLayout();
         updateScroll();
         updateConnections();
@@ -139,6 +138,7 @@ class BishopsBoard {
     initBoard(rows, cols) {
         this.$board = $(`<div class="board" id="b${Object.keys(boards).length}"></div>`);
         this.$stats = $('<div class="board-stats"></div>');
+        this.$boardWrapper = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats);
 
         for (let r = -1; r <= rows; r++) {
             const $row = $('<div></div>');
@@ -275,7 +275,7 @@ class BishopsBoard {
             })
             .on('mousemove', (e) => {
                 if (this.dragging) {
-                    this.$board.add(this.$stats).css({
+                    this.$boardWrapper.css({
                         left: `+=${e.pageX - this.dragging.x}`,
                         top: `+=${e.pageY - this.dragging.y}`
                     });
@@ -317,11 +317,9 @@ class BishopsBoard {
     }
 
     insertBoard($row) {
-        const $wrappedBoard = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats);
-
         // Inserting the first board
         if (!$row.children().length) {
-            return $row.append($wrappedBoard);
+            return $row.append(this.$boardWrapper);
         }
 
         let $nextRow = $row.next('.row');
@@ -341,14 +339,14 @@ class BishopsBoard {
             $rowBoards.each((idx, board) => {
                 const $board = $(board);
                 if (srcIdx < getSrcIdx($board)) {
-                    $board.closest('.board-wrapper').before($wrappedBoard);
+                    $board.closest('.board-wrapper').before(this.$boardWrapper);
                     return false; // break
                 } else if (idx === $rowBoards.length - 1) {
-                    $nextRow.append($wrappedBoard);
+                    $nextRow.append(this.$boardWrapper);
                 }
             });
         } else {
-            $nextRow.append($wrappedBoard);
+            $nextRow.append(this.$boardWrapper);
         }
 
         updateLayout();
@@ -369,12 +367,16 @@ class BishopsBoard {
     }
 
     renderStats() {
-        const ratio = `${this.game.exploredOptions} / ${this.game.totalOptions}`;
-        const statsClass =  (this.game.connectedOptions < this.game.exploredOptions) ? 'missing-connection' :
+        const solvedRatio = `${this.game.solvedPieces} / ${this.game.totalPieces}`;
+
+        const connectionsRatio = `${this.game.exploredOptions} / ${this.game.totalOptions}`;
+        const connectionsClass =  (this.game.connectedOptions < this.game.exploredOptions) ? 'missing-connection' :
             (this.game.exploredOptions === this.game.totalOptions) ? 'complete' : '';
+
         this.$stats.html(
             `<div class="stats-row"><i class="fa fa-fw fa-hashtag"></i> &nbsp;${this.game.index}</div>` +
-            `<div class="stats-row ${statsClass}"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${ratio}</div>`
+            `<div class="stats-row"><i class="fa fa-fw fa-star"></i> &nbsp;${solvedRatio}</div>` +
+            `<div class="stats-row ${connectionsClass}"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${connectionsRatio}</div>`
         );
     }
 
@@ -424,6 +426,9 @@ class BishopsGame {
         this.connectedGames = {};
         this.index = 0;
 
+        this.solvedPieces = 0;
+        this.totalPieces = 0;
+
         this.connectedOptions = 0;
         this.exploredOptions = 0;
         this.totalOptions = 0;
@@ -459,6 +464,9 @@ class BishopsGame {
     };
 
     analyzeGame() {
+        this.solvedPieces = 0;
+        this.totalPieces = 0;
+
         // Reset attack flags
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
@@ -469,12 +477,20 @@ class BishopsGame {
             };
         };
 
-        // First pass: get move options, flag squares as attacked
+        // First pass: get move options, flag squares as attacked, count solved pieces
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const square = this.state[r][c];
                 const {occupiedBy} = square;
                 if (occupiedBy) {
+                    this.totalPieces++;
+
+                    // Count bishops that have successfully traversed the board
+                    if (
+                        (occupiedBy === 'white' && c === 0) ||
+                        (occupiedBy === 'black' && c === this.cols - 1)
+                    ) this.solvedPieces++;
+
                     square.moveOptions = this.findBishopMoves(r, c);
                     for (let m = 0; m < square.moveOptions.length; m++) {
                         const move = square.moveOptions[m];
