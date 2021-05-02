@@ -32,6 +32,7 @@ $(document).ready(() => {
 
     $('#show-settings, #hide-settings').on('click', () => {
         $('body').toggleClass('show-settings');
+        return false;
     });
 
     $('#show-moves').on('change', function() {
@@ -73,6 +74,11 @@ $(document).ready(() => {
         updateConnections();
     });
     $('#reset-game').on('click', resetGame);
+
+    $('body').on('click', function({target}) {
+        if ($(target).closest('#settings').length) return;
+        $(this).removeClass('show-settings');
+    });
 });
 
 // Cache these values for a very minor optimization when dragging
