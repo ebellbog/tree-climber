@@ -146,7 +146,7 @@ class BishopsBoard {
     initBoard(rows, cols) {
         this.$board = $(`<div class="board" id="b${Object.keys(boards).length}"></div>`);
         this.$stats = $('<div class="board-stats"></div>');
-        this.$menu = $('.context-menu:first').clone();
+        this.$menu = $('.context-menu:last').clone();
 
         this.$boardWrapper = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats, this.$menu);
 
@@ -224,29 +224,9 @@ class BishopsBoard {
                 this.highlightMoves($square);
             })
             .on('click', '.valid-move', ({currentTarget}) => {
-                const destSquare = this.getCoords($(currentTarget));
-                const move = [this.selectedSquare, destSquare];
-
-                const newBoard = new BishopsBoard({src: {board: this, move}});
-                newBoard.insertBoard(this.getRow());
-
-                this.game.connectGame(newBoard.game);
-
-                firstBoard.game.updateSequence();
-                Object.values(boards).forEach((board) => {
-                    board.game.updatePriors();
-                    board.renderStats();
-                });
-
-                const key = this.getConnectionKey(this, newBoard);
-                connections[key] = {
-                    startBoard: this,
-                    startLabel: this.formatCoords(...this.selectedSquare),
-                    endBoard: newBoard,
-                    endLabel: this.formatCoords(...destSquare)
-                };
-
-                drawConnections();
+                const $destSquare = $(currentTarget);
+                const move = [this.selectedSquare, this.getCoords($destSquare)];
+                this.expandMoves([move]);
             })
             .on('click', '.prior-explored-move', ({currentTarget}) => {
                 const $square = $(currentTarget);
@@ -317,6 +297,7 @@ class BishopsBoard {
         this.$menu.on('click', '.menu-option', ({target}) => {
             switch($(target).data('action')) {
                 case 'expand':
+                    this.expandMoves(this.game.getAllValidMoves());
                     break;
                 case 'hint':
                     break;
@@ -392,6 +373,31 @@ class BishopsBoard {
         }
 
         updateLayout();
+    }
+
+    expandMoves(moves) {
+        moves.forEach((move) => {
+            const newBoard = new BishopsBoard({src: {board: this, move}});
+            newBoard.insertBoard(this.getRow());
+
+            this.game.connectGame(newBoard.game);
+
+            const key = this.getConnectionKey(this, newBoard);
+            connections[key] = {
+                startBoard: this,
+                startLabel: this.formatCoords(...move[0]),
+                endBoard: newBoard,
+                endLabel: this.formatCoords(...move[1])
+            };
+        })
+
+        firstBoard.game.updateSequence();
+        Object.values(boards).forEach((board) => {
+            board.game.updatePriors();
+            board.renderStats();
+        });
+
+        drawConnections();
     }
 
     renderGame() {
@@ -586,22 +592,25 @@ class BishopsGame {
 
         console.timeEnd('solve');
 
-        return JSON.parse(`[${winningMoves}]`).slice(1);
+        return (winningMoves) ? JSON.parse(`[${winningMoves}]`).slice(1) : false;
     }
 
-    getPossibleGames() {
-        const possibleGames = [];
+    getAllValidMoves() {
+        const validMoves = [];
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const {moveOptions} = this.state[r][c];
-                possibleGames.push(
-                    ...moveOptions
-                        .filter((move) => move.type === 'valid')
-                        .map((move) => new BishopsGame({src: {game: this, move: [[r, c], [move.row, move.col]]}}))
-                );
+                const moves = moveOptions
+                    .filter((move) => move.type === 'valid')
+                    .map((move) => [[r, c], [move.row, move.col]]);
+                validMoves.push(...moves);
             }
         }
-        return possibleGames;
+        return validMoves;
+    }
+
+    getPossibleGames() {
+        return this.getAllValidMoves().map((move) => new BishopsGame({src: {game: this, move}}));
     }
 
     connectGame(game) {
