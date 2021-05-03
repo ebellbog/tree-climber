@@ -1,2 +1,2 @@
-# bishops-puzzle
-An interactive tool for understanding and solving the bishops puzzle from The 7th Guest
+# TreeClimber
+An interactive tool for visualizing & exploring the state trees (or graphs) that result from some common puzzles & games

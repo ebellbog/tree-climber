@@ -76,6 +76,7 @@ $(document).ready(() => {
     $('#reset-game').on('click', resetGame);
 
     $('body').on('click', function({target}) {
+        $('.context-menu').hide();
         if ($(target).closest('#settings').length) return;
         $(this).removeClass('show-settings');
     });
@@ -116,6 +117,7 @@ class BishopsBoard {
     constructor({rows, cols, pieces, src}) {
         this.$board = null;
         this.$stats = null;
+        this.$menu = null;
 
         this.selectedSquare = null;
         this.dragging = false;
@@ -136,15 +138,17 @@ class BishopsBoard {
         this.game.analyzeGame();
         this.renderGame();
 
-        this.hookEvents();
-
         boards[this.game.hash] = this;
+
+        this.hookEvents();
     }
 
     initBoard(rows, cols) {
         this.$board = $(`<div class="board" id="b${Object.keys(boards).length}"></div>`);
         this.$stats = $('<div class="board-stats"></div>');
-        this.$boardWrapper = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats);
+        this.$menu = $('.context-menu:first').clone();
+
+        this.$boardWrapper = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats, this.$menu);
 
         for (let r = -1; r <= rows; r++) {
             const $row = $('<div></div>');
@@ -188,6 +192,22 @@ class BishopsBoard {
                     return;
                 }
                 this.clearSelection();
+            })
+            .on('contextmenu', (e) => {
+                e.preventDefault();
+                this.dragging = false;
+
+                $('.context-menu').hide();
+
+                const $target = $(e.target);
+                const {offsetX, offsetY} = e
+                const {top, left} = $target.position();
+
+                this.$menu.css({
+                    display: 'block',
+                    left: offsetX + left,
+                    top: offsetY + top
+                });
             })
             .on('click', '.square.white, .square.black', (e) => { // i.e. an occupied square
                 e.stopPropagation();
@@ -293,6 +313,22 @@ class BishopsBoard {
                 this.dragging = false;
                 updateLayout();
             });
+
+        this.$menu.on('click', '.menu-option', ({target}) => {
+            switch($(target).data('action')) {
+                case 'expand':
+                    break;
+                case 'hint':
+                    break;
+                case 'solve':
+                    setTimeout(() => console.log(this.game.solveGame()), 0);
+                    break;
+                default:
+                    break;
+            }
+            this.$menu.hide();
+            return false;
+        })
 
         $('body').on('click', () => this.clearSelection());
     }
@@ -430,6 +466,7 @@ class BishopsGame {
         this.state = [];
 
         this.connectedGames = {};
+        this.lastMove = null;
         this.index = 0;
 
         this.solvedPieces = 0;
@@ -519,6 +556,54 @@ class BishopsGame {
         }
     }
 
+    solveGame() {
+        const history = {[this.hash]: 'null'};
+        let leaves = [this];
+        let layer = 0;
+        let winningMoves;
+
+        console.time('solve');
+
+        while (leaves.length && !winningMoves) {
+            const newLeaves = [];
+            for (let i = 0; i < leaves.length; i++) {
+                const possibleGames = leaves[i].getPossibleGames();
+                for (let j = 0; j < possibleGames.length; j++) {
+                    const game = possibleGames[j];
+                    if (history[game.hash]) continue;
+                    game.analyzeGame();
+                    newLeaves.push(game);
+                    history[game.hash] = `${history[leaves[i].hash]}, ${JSON.stringify(game.lastMove)}`;
+                    if (game.solvedPieces === game.totalPieces) {
+                        winningMoves = history[game.hash];
+                        break;
+                    }
+                }
+            }
+            leaves = newLeaves;
+            layer++;
+        }
+
+        console.timeEnd('solve');
+
+        return JSON.parse(`[${winningMoves}]`).slice(1);
+    }
+
+    getPossibleGames() {
+        const possibleGames = [];
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const {moveOptions} = this.state[r][c];
+                possibleGames.push(
+                    ...moveOptions
+                        .filter((move) => move.type === 'valid')
+                        .map((move) => new BishopsGame({src: {game: this, move: [[r, c], [move.row, move.col]]}}))
+                );
+            }
+        }
+        return possibleGames;
+    }
+
     connectGame(game) {
         this.connectedGames[game.hash] = game;
     }
@@ -606,6 +691,7 @@ class BishopsGame {
         Object.assign(this.state[r2][c2], {
             occupiedBy
         });
+        this.lastMove = move;
     }
 
     get hash() {

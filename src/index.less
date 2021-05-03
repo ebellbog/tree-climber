@@ -13,6 +13,9 @@
 @bgColor: #7c3636;
 @dlgColor: fade(black, 50%);
 
+@borderRadius: 3px;
+@boxShadow: 0 0 8px fade(black, 50%);
+
 @defaultFont: 'Titillium Web', sans-serif;
 
 body {
@@ -26,7 +29,7 @@ body {
     &.show-settings {
         #settings {
             left: 0;
-            box-shadow: 0 0 6px fade(black, 50%);
+            box-shadow: @boxShadow;
 
         }
         #show-settings {
@@ -117,7 +120,7 @@ body {
     color: white;
 
     select, .btn-group, input, .checkbox {
-        border-radius: 3px;
+        border-radius: @borderRadius;
     }
 
     select {
@@ -142,8 +145,6 @@ body {
         select {
             margin: 7px 3px;
         }
-
-        box-shadow: 2px 0 6px black;
     }
 
     .settings-description {
@@ -293,6 +294,13 @@ body {
     &.show-stats {
         .board-wrapper {
             margin: 0 64px;
+
+            &:first-child {
+                margin-left: 100px;
+            }
+            &:last-child {
+                margin-right: 100px;
+            }
         }
         .board-stats {
             display: block;
@@ -494,6 +502,34 @@ body {
     }
 }
 
+.context-menu {
+    position: absolute;
+    display: none;
+
+    pointer-events: all;
+
+    background-color: fade(white, 65%);
+    box-shadow: @boxShadow;
+    backdrop-filter: blur(3px);
+
+    border-radius: @borderRadius;
+
+    .menu-option {
+        padding: 6px 26px 6px 10px;
+
+        text-align: left;
+        font-weight: 400;
+        font-size: 14px;
+
+        cursor: pointer;
+        user-select: none;
+
+        &:hover {
+            background-color: #444;
+            color: white;
+        }
+    }
+}
 
 @keyframes popIn {
     0% { transform: scale(1); }
