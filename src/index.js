@@ -430,6 +430,7 @@ class BishopsBoard {
 
     renderStats() {
         const solvedRatio = `${this.game.solvedPieces} / ${this.game.totalPieces}`;
+        const solvedClass = (this.game.solvedPieces === this.game.totalPieces) ? 'solved' : '';
 
         const connectionsRatio = `${this.game.exploredOptions} / ${this.game.totalOptions}`;
         const connectionsClass =  (this.game.connectedOptions < this.game.exploredOptions) ? 'missing-connection' :
@@ -437,7 +438,7 @@ class BishopsBoard {
 
         this.$stats.html(
             `<div class="stats-row"><i class="fa fa-fw fa-hashtag"></i> &nbsp;${this.game.index}</div>` +
-            `<div class="stats-row"><i class="fa fa-fw fa-star"></i> &nbsp;${solvedRatio}</div>` +
+            `<div class="stats-row ${solvedClass}"><i class="fa fa-fw fa-star"></i> &nbsp;${solvedRatio}</div>` +
             `<div class="stats-row ${connectionsClass}"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${connectionsRatio}</div>`
         );
     }
