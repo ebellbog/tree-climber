@@ -302,7 +302,18 @@ class BishopsBoard {
                 case 'hint':
                     break;
                 case 'solve':
-                    setTimeout(() => console.log(this.game.solveGame()), 0);
+                    setTimeout(() => {
+                        const winningMoves = this.game.solveGame();
+                        if (!winningMoves) {
+                            console.log("couldn't solve");
+                            return;
+                        }
+
+                        let lastBoard = this;
+                        winningMoves.forEach((move) => {
+                            lastBoard = lastBoard.expandMoves([move])[0];
+                        });
+                    }, 0);
                     break;
                 default:
                     break;
@@ -376,9 +387,11 @@ class BishopsBoard {
     }
 
     expandMoves(moves) {
+        const newBoards = [];
         moves.forEach((move) => {
             const newBoard = new BishopsBoard({src: {board: this, move}});
             newBoard.insertBoard(this.getRow());
+            newBoards.push(newBoard);
 
             this.game.connectGame(newBoard.game);
 
@@ -398,6 +411,7 @@ class BishopsBoard {
         });
 
         drawConnections();
+        return newBoards;
     }
 
     renderGame() {
@@ -563,7 +577,8 @@ class BishopsGame {
     }
 
     solveGame() {
-        const history = {[this.hash]: 'null'};
+        const history = Object.values(boards).reduce((acc, board) => Object.assign(acc, {[board.game.hash]: 'null'}), {});
+
         let leaves = [this];
         let layer = 0;
         let winningMoves;
