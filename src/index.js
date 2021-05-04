@@ -37,6 +37,16 @@ $(document).ready(() => {
         return false;
     });
 
+    $('.toggle-btn').on('click', ({target}) => {
+        $('.toggle-btn').removeClass('active');
+        const toggle = $(target)
+            .addClass('active')
+            .data('toggle');
+
+        $('.settings-content').hide();
+        $(`#${toggle}`).show();
+    });
+
     $('#show-moves').on('change', function() {
         $stateGraph.toggleClass('show-moves', this.checked);
         updateLayout();

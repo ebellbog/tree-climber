@@ -10,7 +10,7 @@
         <div id="btn-bar">
             <div id="show-settings" class="btn" title="Show help & settings"><i class="fa fa-bars"></i></div>
 
-            <h1><span class="emoji">🐒</span> TreeClimber <span class="byline">&nbsp;|&nbsp; A visual tool for exploring trees</span></h1>
+            <h1><span class="emoji">🐒</span> TreeClimber <span class="byline desktop-only">&nbsp;|&nbsp; A visual tool for exploring trees</span></h1>
 
             <div id="reset-game" class="btn" title="Reset game"><i class="fa fa-undo"></i></div>
             <div id="reset-layout" class="btn" title="Reset layout"><i class="fas fa-border-all"></i></div>
@@ -32,13 +32,23 @@
             <div class="btn-wrapper">
                 <hr>
                 <div class="btn-group">
-                    <div class="toggle-btn">Help</div>
-                    <div class="toggle-btn active">Settings</div>
+                    <div class="toggle-btn active" data-toggle="help-panel">Help</div>
+                    <div class="toggle-btn" data-toggle="settings-panel">Settings</div>
                 </div>
                 <hr>
             </div>
-            <div class="settings-content" id="help-panel" hidden></div>
-            <div class="settings-content" id="settings-panel">
+            <div class="settings-content" id="help-panel">
+                <div class="help-item">Hover over a <i class="fa fa-fw fa-chess-bishop"></i> to see how it can move.</div>
+                <div class="help-item">
+                    <strong class="valid-color">Green</strong> means you can move safely.
+                    <strong class="prior-color">Yellow</strong> means you can move, but you've already moved there.
+                    <strong class="invalid-color">Red</strong> means the square is attacked by another <i class="fa fa-fw fa-chess-bishop"></i>.
+                </div>
+                <div class="help-item">To move, click a <i class="fa fa-fw fa-chess-bishop"></i>, then choose a square. A new board will appear with this move applied.</div>
+                <div class="help-item">Click & drag a board to reposition it. Reset all boards by clicking the <i class="fa fa-fw fa-border-all"></i> icon.</div>
+                <div class="help-item">Right click a board to get AI assistance.</div>
+            </div>
+            <div class="settings-content" id="settings-panel" hidden>
                 <div class="input-group">
                     <label>Board size:</label>
                     <div>
@@ -82,6 +92,6 @@
             <div class="menu-option" data-action="hint">Get hint</div>
             <div class="menu-option" data-action="solve">Solve subtree</div>
         </div>
-        <div id="leaves"></div>
+        <div id="leaves" class="desktop-only"></div>
     </body>
 </html>

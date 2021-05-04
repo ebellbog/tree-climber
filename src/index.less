@@ -10,6 +10,8 @@
 @invalidColor: red;
 @priorColor: gold;
 
+@settingsHighlight: #6ca146;
+
 @bgColor: #3f6e52;//#7c3636;
 @dlgColor: fade(black, 50%);
 
@@ -37,6 +39,16 @@ body {
             opacity: 0;
             transition: none;
         }
+    }
+
+    .valid-color {
+        color: @validColor;
+    }
+    .invalid-color {
+        color: @invalidColor;
+    }
+    .prior-color {
+        color: @priorColor;
     }
 }
 
@@ -76,9 +88,6 @@ body {
         }
         .byline {
             font-weight: 200;
-            @media screen and (max-width: 850px) {
-                display: none;
-            }
         }
     }
 }
@@ -151,7 +160,7 @@ body {
     }
 
     .settings-header {
-        background-color: #6ca146;
+        background-color: @settingsHighlight;
 
         width: 100%;
         padding: 0 10px;
@@ -166,7 +175,7 @@ body {
         }
     }
 
-    .settings-description {
+    .settings-description, #help-panel {
         margin: 12px 9px;
         font-size: 15px;
         letter-spacing: .5px;
@@ -225,9 +234,8 @@ body {
 
                     &:checked {
                         ~.checkbox {
-                            background-color: black;
-                            box-shadow: inset 0 0 2px 3px white;
-                            filter: contrast(5);
+                            background-color: @settingsHighlight;
+                            box-shadow: inset 0 0 0px 3px white;
                         }
                     }
                 }
@@ -242,18 +250,26 @@ body {
                 }
             }
         }
+
+        .help-item {
+            margin-bottom: 12px;
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
     }
 
     .btn-wrapper {
         text-align: center;
         width: 100%;
+        height: 30px;
         padding: 22px 0;
 
         hr {
             display: inline-block;
             width: 42px;
             position: relative;
-            bottom: 15px;
+            bottom: 14px;
             margin: 0 8px;
         }
     }
@@ -618,7 +634,7 @@ body {
     position: fixed;
     left: -25px;
     bottom: 105px;
-    opacity: 0.3;
+    opacity: 0.2;
 }
 .leaf {
     position: absolute;
@@ -655,4 +671,10 @@ body {
         }
     }
 
+}
+
+.desktop-only {
+    @media screen and (max-width: 850px) {
+        display: none;
+    }
 }
