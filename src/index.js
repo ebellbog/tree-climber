@@ -463,6 +463,12 @@ class BishopsBoard {
             `<div class="stats-row ${solvedClass}"><i class="fa fa-fw fa-star"></i> &nbsp;${solvedRatio}</div>` +
             `<div class="stats-row ${connectionsClass}"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${connectionsRatio}</div>`
         );
+
+        const remainingOptions = this.game.totalOptions - this.game.exploredOptions;
+        const $expand = this.$menu.find('[data-action="expand"]');
+        $expand
+            .toggle(remainingOptions > 0)
+            .html(`Make ${remainingOptions} remaining move${remainingOptions !== 1 ? 's' : ''}`);
     }
 
     getSquare(row, col) {

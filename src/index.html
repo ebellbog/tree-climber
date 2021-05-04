@@ -38,15 +38,15 @@
                 <hr>
             </div>
             <div class="settings-content" id="help-panel">
-                <div class="help-item">Hover over a <i class="fa fa-fw fa-chess-bishop"></i> to see how it can move.</div>
+                <div class="help-item">Hover over a <i class="fa fa-fw fa-chess-bishop"></i> to see how it can move:</div>
                 <div class="help-item">
-                    <strong class="valid-color">Green</strong> means you can move safely.
-                    <strong class="prior-color">Yellow</strong> means you can move, but you've already moved there.
-                    <strong class="invalid-color">Red</strong> means the square is attacked by another <i class="fa fa-fw fa-chess-bishop"></i>.
+                    <i class="fa fa-fw fa-square valid-color"></i> You can move here safely <br>
+                    <i class="fa fa-fw fa-square prior-color"></i> You've moved here before <br>
+                    <i class="fa fa-fw fa-square invalid-color"></i> Square attacked by another <i class="fa fa-fw fa-chess-bishop"></i>
                 </div>
-                <div class="help-item">To move, click a <i class="fa fa-fw fa-chess-bishop"></i>, then choose a square. A new board will appear with this move applied.</div>
-                <div class="help-item">Click & drag a board to reposition it. Reset all boards by clicking the <i class="fa fa-fw fa-border-all"></i> icon.</div>
-                <div class="help-item">Right click a board to get AI assistance.</div>
+                <div class="help-item">To move, click a <i class="fa fa-fw fa-chess-bishop"></i> on any <i class="fa fa-fw fa-chess-board"></i>, then choose a <i class="fa fa-fw fa-square"></i>. A new <i class="fa fa-fw fa-chess-board"></i> will appear with this move applied.</div>
+                <div class="help-item">Click & drag a <i class="fa fa-fw fa-chess-board"></i> to reposition it. Reset all <i class="fa fa-fw fa-chess-board"></i> by clicking the <i class="fa fa-fw fa-border-all"></i> icon.</div>
+                <div class="help-item">Right click a <i class="fa fa-fw fa-chess-board"></i> to get AI assistance.</div>
             </div>
             <div class="settings-content" id="settings-panel" hidden>
                 <div class="input-group">
@@ -89,8 +89,8 @@
         </div>
         <div class="context-menu">
             <div class="menu-option" data-action="expand">Make all moves</div>
-            <div class="menu-option" data-action="solve">Solve from here</div>
-            <div class="menu-option" data-action="hint">Get hint</div>
+            <div class="menu-option" data-action="hint">Get a hint</div>
+            <div class="menu-option" data-action="solve">Solve game from here</div>
         </div>
         <div id="leaves" class="desktop-only"></div>
     </body>
