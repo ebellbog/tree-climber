@@ -1,4 +1,5 @@
 import './index.less';
+import Leaf from '../img/jungle_leaf.svg';
 
 /* Constants */
 
@@ -23,6 +24,7 @@ let boards, connections, firstBoard;
 /* Initialization & event hooks */
 
 $(document).ready(() => {
+    drawLeaves();
     resetGame();
 
     $(window).on('resize', () => updateConnections());
@@ -75,10 +77,8 @@ $(document).ready(() => {
     });
     $('#reset-game').on('click', resetGame);
 
-    $('body').on('click', function({target}) {
+    $('body').on('click', () => {
         $('.context-menu').hide();
-        if ($(target).closest('#settings').length) return;
-        $(this).removeClass('show-settings');
     });
 });
 
@@ -789,6 +789,15 @@ function updateText($text, {x, y}) {
     return $text
         .attr('x', x)
         .attr('y', y);
+}
+
+function drawLeaves() {
+    const $leaf = $(Leaf).addClass('leaf');
+    const $leaves = $('#leaves');
+
+    $leaves.append($leaf.clone().addClass('medium-leaf'));
+    $leaves.append($leaf.clone().addClass('light-leaf'));
+    $leaves.append($leaf.clone().addClass('dark-leaf'));
 }
 
 function drawConnections() {

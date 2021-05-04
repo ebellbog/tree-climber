@@ -32,7 +32,7 @@ module.exports = (env, argv) => {
         devServer: {
             contentBase: path.resolve(__dirname),
         },
-        devtool: 'cheap-module-eval-source-map',
+        devtool: 'eval-cheap-module-source-map',
         entry: './src/index.js',
         output: {
             filename: 'bundle.js',
@@ -51,7 +51,7 @@ module.exports = (env, argv) => {
                     ],
                 },
                 {
-                    test: /\.(ttf|otf|png|jpe?g|wav|mov)$/,
+                    test: /\.(ttf|otf|png|jpe?g)$/,
                     use: [
                         {
                             loader: 'file-loader',
@@ -61,6 +61,10 @@ module.exports = (env, argv) => {
                         }
                     ]
                 },
+                {
+                    test: /\.svg/,
+                    type: 'asset/source'
+                }
             ]
         },
         plugins: getPlugins(argv.mode)
