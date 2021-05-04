@@ -310,19 +310,31 @@ class BishopsBoard {
                     this.expandMoves(this.game.getAllValidMoves());
                     break;
                 case 'hint':
-                    break;
-                case 'solve':
+                    this.$board.css('opacity', 0.6);
                     setTimeout(() => {
                         const winningMoves = this.game.solveGame();
-                        if (!winningMoves) {
-                            console.log("couldn't solve");
-                            return;
-                        }
+                        this.$board.css('opacity', 1);
 
-                        let lastBoard = this;
-                        winningMoves.forEach((move) => {
-                            lastBoard = lastBoard.expandMoves([move])[0];
-                        });
+                        if (!winningMoves) return;
+
+                        this.expandMoves([winningMoves[0]]);
+                    }, 0);
+                    break;
+                case 'solve':
+                    this.$board.css('opacity', 0.6);
+                    setTimeout(() => {
+                        const winningMoves = this.game.solveGame();
+                        this.$board.css('opacity', 1);
+                        if (!winningMoves) return;
+
+                        let index = 0, board = this;
+                        const delayedExpand = () => {
+                            board = board.expandMoves([winningMoves[index]])[0];
+                            $stateGraph.scrollTop($stateGraph[0].scrollHeight);
+                            index++;
+                            if (index < winningMoves.length) setTimeout(() => delayedExpand(), 750);
+                        };
+                        delayedExpand(this);
                     }, 0);
                     break;
                 default:
