@@ -252,7 +252,7 @@ body {
         }
 
         .help-item {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             &:last-child {
                 margin-bottom: 0;
             }
@@ -425,6 +425,30 @@ body {
         background-color: @lightSquare;
         &.white:hover, &.black:hover {
             background-color: darken(@lightSquare, @highlight);
+        }
+    }
+
+    .loading-indicator {
+        display: none;
+        pointer-events: none;
+
+        z-index: 1;
+
+        position: absolute;
+        top: 0;
+        left: 0;
+
+        width: 100%;
+        height: 100%;
+
+        background-color: fade(#444, 70%);
+
+        .fa-spinner {
+            position: absolute;
+            top: calc(50% - 15px);
+            left: calc(50% - 15px);
+            color: white;
+            font-size: 30px;
         }
     }
 

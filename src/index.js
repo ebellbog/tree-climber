@@ -128,6 +128,7 @@ class BishopsBoard {
         this.$board = null;
         this.$stats = null;
         this.$menu = null;
+        this.$loadingIndicator = null;
 
         this.selectedSquare = null;
         this.dragging = false;
@@ -155,6 +156,9 @@ class BishopsBoard {
 
     initBoard(rows, cols) {
         this.$board = $(`<div class="board" id="b${Object.keys(boards).length}"></div>`);
+        this.$loadingIndicator = $('<div class="loading-indicator"><i class="fas fa-spinner fa-pulse"></i></div>');
+        this.$board.append(this.$loadingIndicator);
+
         this.$stats = $('<div class="board-stats"></div>');
         this.$menu = $('.context-menu:last').clone();
 
@@ -310,10 +314,10 @@ class BishopsBoard {
                     this.expandMoves(this.game.getAllValidMoves());
                     break;
                 case 'hint':
-                    this.$board.css('opacity', 0.6);
+                    this.$loadingIndicator.show();
                     setTimeout(() => {
                         const winningMoves = this.game.solveGame();
-                        this.$board.css('opacity', 1);
+                        this.$loadingIndicator.hide();
 
                         if (!winningMoves) return;
 
@@ -321,10 +325,11 @@ class BishopsBoard {
                     }, 0);
                     break;
                 case 'solve':
-                    this.$board.css('opacity', 0.6);
+                    this.$loadingIndicator.show();
                     setTimeout(() => {
                         const winningMoves = this.game.solveGame();
-                        this.$board.css('opacity', 1);
+                        this.$loadingIndicator.hide();
+
                         if (!winningMoves) return;
 
                         let index = 0, board = this;
@@ -332,7 +337,7 @@ class BishopsBoard {
                             board = board.expandMoves([winningMoves[index]])[0];
                             $stateGraph.scrollTop($stateGraph[0].scrollHeight);
                             index++;
-                            if (index < winningMoves.length) setTimeout(() => delayedExpand(), 750);
+                            if (index < winningMoves.length) setTimeout(() => delayedExpand(), 700);
                         };
                         delayedExpand(this);
                     }, 0);
