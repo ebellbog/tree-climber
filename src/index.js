@@ -529,7 +529,7 @@ class BishopsGame {
 
         this.connectedGames = {};
         this.lastMove = null;
-        this.index = 0;
+        this.history = [];
 
         this.solvedPieces = 0;
         this.totalPieces = 0;
@@ -679,11 +679,11 @@ class BishopsGame {
         if (this.index === 0) {
             Object.values(boards)
                 .filter(({game}) => game !== this)
-                .forEach(({game}) => game.index = -1);
+                .forEach(({game}) => game.history = false);
         }
 
-        const gamesToVisit = Object.values(this.connectedGames).filter((game) => game.index === -1 || game.index > this.index + 1);
-        gamesToVisit.forEach((game) => game.index = this.index + 1);
+        const gamesToVisit = Object.values(this.connectedGames).filter((game) => game.index === false || game.index > this.index + 1);
+        gamesToVisit.forEach((game) => game.history = [...this.history, this]);
         gamesToVisit.forEach((game) => game.updateSequence()); // recurse
     }
 
@@ -772,6 +772,9 @@ class BishopsGame {
     }
     get cols() {
         return this.state[0].length;
+    }
+    get index() {
+        return this.history ? this.history.length : false;
     }
 }
 
