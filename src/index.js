@@ -289,7 +289,7 @@ class BishopsBoard {
                         let index = 0, board = this;
                         const delayedExpand = () => {
                             board = board.expandMoves([winningMoves[index]])[0];
-                            $stateGraph.scrollTop(getBoardTop(board.$board).y);
+                            $stateGraph.scrollTop(getBoardTop(board.$board).y - $('#btn-bar').height());
                             index++;
                             if (index < winningMoves.length) setTimeout(() => delayedExpand(), 700);
                         };
@@ -368,12 +368,12 @@ class BishopsBoard {
     }
 
     expandMoves(moves) {
-        const newBoards = [];
+        const expandedBoards = [];
         moves.forEach((move) => {
             const {hash} = new BishopsGame({src: {game: this.game, move}});
             if (boards[hash]) {
                 const priorBoard = boards[hash];
-                newBoards.push(priorBoard);
+                expandedBoards.push(priorBoard);
 
                 // Create two-way link between games
                 this.game.connectGame(priorBoard.game);
@@ -407,7 +407,7 @@ class BishopsBoard {
                 const newBoard = new BishopsBoard({src: {board: this, move}});
 
                 newBoard.insertBoard(this.getRow());
-                newBoards.push(newBoard);
+                expandedBoards.push(newBoard);
 
                 this.game.connectGame(newBoard.game);
 
@@ -428,7 +428,7 @@ class BishopsBoard {
         });
 
         drawConnections();
-        return newBoards;
+        return expandedBoards;
     }
 
     renderGame() {
@@ -612,7 +612,6 @@ class BishopsGame {
             .reduce((acc, hash) => Object.assign(acc, {[hash]: '[]'}), {});
 
         let leaves = [this];
-        let layer = 0;
         let winningMoves;
 
         console.time('solve');
@@ -622,22 +621,21 @@ class BishopsGame {
             for (let i = 0; i < leaves.length; i++) {
                 const possibleGames = leaves[i].getPossibleGames();
                 for (let j = 0; j < possibleGames.length; j++) {
-                    const nextGame = possibleGames[j];
-                    if (moveHistory[nextGame.hash]) continue; // If already exists in solution history, this isn't the shortest path
+                    const possibleGame = possibleGames[j];
+                    if (moveHistory[possibleGame.hash]) continue; // If already exists in solution history, this isn't the shortest path
 
-                    nextGame.analyzeGame(); // Get valid/invalid moves; importantly, won't mark priors
+                    possibleGame.analyzeGame();
 
-                    newLeaves.push(nextGame); // Add game to next tier of the tree
-                    moveHistory[nextGame.hash] = `${moveHistory[leaves[i].hash]}, ${JSON.stringify(nextGame.lastMove)}`; // Accumulate moves
+                    newLeaves.push(possibleGame);
+                    moveHistory[possibleGame.hash] = `${moveHistory[leaves[i].hash]}, ${JSON.stringify(possibleGame.lastMove)}`; // Accumulate moves
 
-                    if (nextGame.solvedPieces === nextGame.totalPieces) {
-                        winningMoves = moveHistory[nextGame.hash];
+                    if (possibleGame.solvedPieces === possibleGame.totalPieces) {
+                        winningMoves = moveHistory[possibleGame.hash];
                         break;
                     }
                 }
             }
             leaves = newLeaves;
-            layer++;
         }
 
         console.timeEnd('solve');
@@ -645,13 +643,16 @@ class BishopsGame {
         return (winningMoves) ? JSON.parse(`[${winningMoves}]`).slice(1) : false;
     }
 
-    getAllValidMoves() {
+    getAllValidMoves(includePriors = false) {
+        const validTypes = ['valid'];
+        if (includePriors) validTypes.push('prior-connected', 'prior-explored');
+
         const validMoves = [];
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const {moveOptions} = this.state[r][c];
                 const moves = moveOptions
-                    .filter((move) => move.type === 'valid')
+                    .filter((move) => validTypes.includes(move.type))
                     .map((move) => [[r, c], [move.row, move.col]]);
                 validMoves.push(...moves);
             }
@@ -660,7 +661,7 @@ class BishopsGame {
     }
 
     getPossibleGames() {
-        return this.getAllValidMoves().map((move) => new BishopsGame({src: {game: this, move}}));
+        return this.getAllValidMoves(true).map((move) => new BishopsGame({src: {game: this, move}}));
     }
 
     connectGame(game) {
