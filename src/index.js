@@ -132,6 +132,7 @@ class BishopsBoard {
 
         this.selectedSquare = null;
         this.dragging = false;
+        this.myConnections = [];
 
         if (src) {
             const {board, move} = src;
@@ -291,6 +292,7 @@ class BishopsBoard {
                 drawConnections();
             })
             .on('mousedown', (e) => {
+                this.myConnections = this.getMyConnections();
                 this.dragging = {x: e.pageX, y: e.pageY};
             })
             .on('mousemove', (e) => {
@@ -300,7 +302,7 @@ class BishopsBoard {
                         top: `+=${e.pageY - this.dragging.y}`
                     });
                     this.dragging = {x: e.pageX, y: e.pageY};
-                    updateConnections();
+                    updateConnections(this.myConnections);
                 }
             })
             .on('mouseup', () => {
@@ -506,6 +508,12 @@ class BishopsBoard {
             .sort(($b1, $b2) => this.getRowIdx($b1) > this.getRowIdx($b2) ? 1 : -1)
             .map(($b) => $b.attr('id'))
             .join('');
+    }
+
+    getMyConnections() {
+        return Object.keys(connections)
+            .filter((key) => key.includes(this.id))
+            .map((key) => connections[key]);
     }
 
     get id() {
