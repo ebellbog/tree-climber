@@ -238,58 +238,10 @@ class BishopsBoard {
 
                 this.highlightMoves($square);
             })
-            .on('click', '.valid-move', ({currentTarget}) => {
+            .on('click', '.valid-move, .prior-explored-move', ({currentTarget}) => {
                 const $destSquare = $(currentTarget);
                 const move = [this.selectedSquare, this.getCoords($destSquare)];
                 this.expandMoves([move]);
-            })
-            .on('click', '.prior-explored-move', ({currentTarget}) => {
-                const $square = $(currentTarget);
-                const targetCoords = this.getCoords($square);
-
-                const priorHash = $square.attr('data-prior');
-                const priorBoard = boards[priorHash];
-
-                // Create two-way link between games
-                this.game.connectGame(priorBoard.game);
-                priorBoard.game.connectGame(this.game);
-
-                // Update priors
-                [this, priorBoard].forEach((board) => {
-                    board.game.updatePriors();
-                    board.renderStats();
-                });
-
-                // Re-sequence games based on new connections
-                firstBoard.game.updateSequence();
-                Object.values(boards).forEach((board) => board.renderStats());
-
-                const rowIdx = this.getRowIdx();
-                const priorIdx = this.getRowIdx(priorBoard.$board);
-
-                // Determine start & end based on row order, from top to bottom
-                let startBoard, startLabel, endBoard, endLabel;
-                if (rowIdx > priorIdx) {
-                    startBoard = priorBoard;
-                    startLabel = this.formatCoords(...targetCoords);
-                    endBoard = this;
-                    endLabel = this.formatCoords(...this.selectedSquare);
-                } else {
-                    startBoard = this;
-                    startLabel = this.formatCoords(...this.selectedSquare);
-                    endBoard = priorBoard;
-                    endLabel = this.formatCoords(...targetCoords);
-                }
-
-                const key = this.getConnectionKey(this, priorBoard);
-                connections[key] = {
-                    startBoard,
-                    startLabel,
-                    endBoard,
-                    endLabel
-                };
-
-                drawConnections();
             })
             .on('mousedown', (e) => {
                 this.myConnections = this.getMyConnections();
@@ -337,7 +289,7 @@ class BishopsBoard {
                         let index = 0, board = this;
                         const delayedExpand = () => {
                             board = board.expandMoves([winningMoves[index]])[0];
-                            $stateGraph.scrollTop($stateGraph[0].scrollHeight);
+                            $stateGraph.scrollTop(getBoardTop(board.$board).y);
                             index++;
                             if (index < winningMoves.length) setTimeout(() => delayedExpand(), 700);
                         };
@@ -418,20 +370,56 @@ class BishopsBoard {
     expandMoves(moves) {
         const newBoards = [];
         moves.forEach((move) => {
-            const newBoard = new BishopsBoard({src: {board: this, move}});
-            newBoard.insertBoard(this.getRow());
-            newBoards.push(newBoard);
+            const {hash} = new BishopsGame({src: {game: this.game, move}});
+            if (boards[hash]) {
+                const priorBoard = boards[hash];
+                newBoards.push(priorBoard);
 
-            this.game.connectGame(newBoard.game);
+                // Create two-way link between games
+                this.game.connectGame(priorBoard.game);
+                priorBoard.game.connectGame(this.game);
 
-            const key = this.getConnectionKey(this, newBoard);
-            connections[key] = {
-                startBoard: this,
-                startLabel: this.formatCoords(...move[0]),
-                endBoard: newBoard,
-                endLabel: this.formatCoords(...move[1])
-            };
-        })
+                const rowIdx = this.getRowIdx();
+                const priorIdx = this.getRowIdx(priorBoard.$board);
+
+                // Determine start & end based on row order, from top to bottom
+                let startBoard, startLabel, endBoard, endLabel;
+                if (rowIdx > priorIdx) {
+                    startBoard = priorBoard;
+                    startLabel = this.formatCoords(...move[1]);
+                    endBoard = this;
+                    endLabel = this.formatCoords(...move[0]);
+                } else {
+                    startBoard = this;
+                    startLabel = this.formatCoords(...move[0]);
+                    endBoard = priorBoard;
+                    endLabel = this.formatCoords(...move[1]);
+                }
+
+                const key = this.getConnectionKey(this, priorBoard);
+                connections[key] = {
+                    startBoard,
+                    startLabel,
+                    endBoard,
+                    endLabel
+                };
+            } else {
+                const newBoard = new BishopsBoard({src: {board: this, move}});
+
+                newBoard.insertBoard(this.getRow());
+                newBoards.push(newBoard);
+
+                this.game.connectGame(newBoard.game);
+
+                const key = this.getConnectionKey(this, newBoard);
+                connections[key] = {
+                    startBoard: this,
+                    startLabel: this.formatCoords(...move[0]),
+                    endBoard: newBoard,
+                    endLabel: this.formatCoords(...move[1])
+                };
+            }
+        });
 
         firstBoard.game.updateSequence();
         Object.values(boards).forEach((board) => {
@@ -619,7 +607,9 @@ class BishopsGame {
     }
 
     solveGame() {
-        const history = Object.values(boards).reduce((acc, board) => Object.assign(acc, {[board.game.hash]: 'null'}), {});
+        // Don't "backtrace" to games in this game's own history
+        const moveHistory = this.history.concat(this.hash)
+            .reduce((acc, hash) => Object.assign(acc, {[hash]: '[]'}), {});
 
         let leaves = [this];
         let layer = 0;
@@ -632,13 +622,16 @@ class BishopsGame {
             for (let i = 0; i < leaves.length; i++) {
                 const possibleGames = leaves[i].getPossibleGames();
                 for (let j = 0; j < possibleGames.length; j++) {
-                    const game = possibleGames[j];
-                    if (history[game.hash]) continue;
-                    game.analyzeGame();
-                    newLeaves.push(game);
-                    history[game.hash] = `${history[leaves[i].hash]}, ${JSON.stringify(game.lastMove)}`;
-                    if (game.solvedPieces === game.totalPieces) {
-                        winningMoves = history[game.hash];
+                    const nextGame = possibleGames[j];
+                    if (moveHistory[nextGame.hash]) continue; // If already exists in solution history, this isn't the shortest path
+
+                    nextGame.analyzeGame(); // Get valid/invalid moves; importantly, won't mark priors
+
+                    newLeaves.push(nextGame); // Add game to next tier of the tree
+                    moveHistory[nextGame.hash] = `${moveHistory[leaves[i].hash]}, ${JSON.stringify(nextGame.lastMove)}`; // Accumulate moves
+
+                    if (nextGame.solvedPieces === nextGame.totalPieces) {
+                        winningMoves = moveHistory[nextGame.hash];
                         break;
                     }
                 }
@@ -683,7 +676,7 @@ class BishopsGame {
         }
 
         const gamesToVisit = Object.values(this.connectedGames).filter((game) => game.index === false || game.index > this.index + 1);
-        gamesToVisit.forEach((game) => game.history = [...this.history, this]);
+        gamesToVisit.forEach((game) => game.history = [...this.history, this.hash]);
         gamesToVisit.forEach((game) => game.updateSequence()); // recurse
     }
 
