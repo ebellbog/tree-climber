@@ -409,6 +409,8 @@ class BishopsBoard {
                     endBoard,
                     endLabel
                 };
+
+                priorBoard.$board.toggleClass('extra-pop');
             } else {
                 const newBoard = new BishopsBoard({src: {board: this, move}});
 

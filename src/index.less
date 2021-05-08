@@ -629,6 +629,20 @@ body {
     }
 }
 
+@keyframes popIn {
+    0% { transform: scale(1); }
+    20% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+@keyframes extraPop {
+    0% { transform: scale(1); }
+    20% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+.extra-pop {
+    animation: extraPop .4s;
+}
+
 .context-menu {
     z-index: 5;
     position: absolute;
@@ -658,12 +672,6 @@ body {
             color: white;
         }
     }
-}
-
-@keyframes popIn {
-    0% { transform: scale(1); }
-    20% { transform: scale(1.12); }
-    100% { transform: scale(1); }
 }
 
 #svg-layer {
