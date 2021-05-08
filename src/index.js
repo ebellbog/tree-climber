@@ -18,6 +18,8 @@ const $stateGraph = $('#state-graph');
 let numRows = 4;
 let numCols = 5;
 let showPieces = 'all';
+let showMoves = false;
+let drawBranches = true;
 
 let scrollTop, scrollLeft;
 let boards, connections, firstBoard;
@@ -54,10 +56,11 @@ $(document).ready(() => {
     });
 
     $('#show-moves').on('change', function() {
-        $stateGraph.toggleClass('show-moves', this.checked);
+        showMoves = this.checked;
+        $stateGraph.toggleClass('show-moves', showMoves);
         updateLayout();
         updateScroll();
-        updateConnections();
+        drawConnections();
     });
     $('#show-stats').on('change', function() {
         $stateGraph.toggleClass('show-stats', this.checked);
@@ -68,6 +71,11 @@ $(document).ready(() => {
     $('#show-pieces').on('change', function() {
         showPieces = this.value;
         resetGame();
+    });
+    $('#draw-branches').on('change', function() {
+        drawBranches = this.checked;
+        $stateGraph.toggleClass('tree-styling', drawBranches);
+        drawConnections();
     });
 
     $('#num-rows').on('change', function() {
@@ -866,43 +874,51 @@ function updateText($text, {x, y}) {
 
 function drawConnections() {
     clearSvg();
-    const labels = [];
     Object.entries(connections).forEach(([key, connection]) => {
         const {startBoard, startLabel, endBoard, endLabel} = connection;
         const bottom = getBoardBottom(startBoard.$board);
         const top = getBoardTop(endBoard.$board);
 
-        Object.assign(connection, drawBranch(bottom, top));
+        if (drawBranches) Object.assign(connection, drawBranch(bottom, top));
+        else connection.$path = drawBezier(bottom, top);
 
-        const midpoint = getMidpoint(bottom, top);
-        connection.$rect = drawRect(
-            {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
-            LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
-        );
+        if (showMoves) {
+            const midpoint = getMidpoint(bottom, top);
+            connection.$rect = drawRect(
+                {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
+                LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
+            );
 
-        const indexDelta = endBoard.game.index - startBoard.game.index;
-        const direction = (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←';
-        connection.$text = drawText(midpoint, `${startLabel} ${direction} ${endLabel}`);
+            const indexDelta = endBoard.game.index - startBoard.game.index;
+            const direction = (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←';
+            connection.$text = drawText(midpoint, `${startLabel} ${direction} ${endLabel}`);
+        }
 
         // Add key class to support highlighting prior connections
-        [connection.$rect, connection.$text, connection.$branch, ...connection.$leaves].forEach(($el) => $el.addClass(key));
+        const $connectionPieces = (showMoves ? [connection.$rect, connection.$text] : [])
+            .concat(drawBranches ? [connection.$branch, ...connection.$leaves] : [connection.$path]);
+        $connectionPieces.forEach(($el) => $el.addClass(key));
     });
 
     // Draw labels on top of connections & leaves on top of branches (z-index won't work)
     const moveToTop = ($els) => $els.forEach(($el) => $el.detach().appendTo($svgLayer));
-    Object.values(connections).forEach(({$leaves}) => moveToTop([...$leaves]));
-    Object.values(connections).forEach(({$rect, $text}) => moveToTop([$rect, $text]));
+    if (drawBranches) Object.values(connections).forEach(({$leaves}) => moveToTop([...$leaves]));
+    if (showMoves) Object.values(connections).forEach(({$rect, $text}) => moveToTop([$rect, $text]));
 }
 
 function updateConnections(specificConnections) {
     (specificConnections || Object.values(connections)).forEach((c) => {
         const bottom = getBoardBottom(c.startBoard.$board);
         const top = getBoardTop(c.endBoard.$board);
-        const midpoint = getMidpoint(bottom, top);
 
-        updateBranch(c.$branch, c.$leaves, bottom, top);
-        updateText(c.$text, midpoint);
-        updateRect(c.$rect, {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2});
+        if (drawBranches) updateBranch(c.$branch, c.$leaves, bottom, top);
+        else updateBezier(c.$path, bottom, top);
+
+        if (showMoves) {
+            const midpoint = getMidpoint(bottom, top);
+            updateText(c.$text, midpoint);
+            updateRect(c.$rect, {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2});
+        }
     });
 }
 

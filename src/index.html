@@ -20,8 +20,8 @@
                 <label>Game: </label>
                 <select>
                     <option value="bishops">The Bishops Puzzle</option>
-                    <option value="knights">The Knights Puzzle</option>
-                    <option value="queens">The N-Queens Problem</option>
+                    <option value="knights" disabled>The Knights Puzzle</option>
+                    <option value="queens" disabled>The N-Queens Problem</option>
                 </select>
                 <div id="hide-settings" class="btn" title="Hide"><i class="fa fa-times"></i></div>
             </div>
@@ -80,6 +80,13 @@
                         <div class="checkbox"></div>
                     </div>
                     <label for="show-stats">Show stats</label>
+                </div>
+                <div class="checkbox-group">
+                    <div class="custom-checkbox">
+                        <input type="checkbox" id="draw-branches" checked>
+                        <div class="checkbox"></div>
+                    </div>
+                    <label for="draw-branches">Leafy branches</label>
                 </div>
             </div>
         </div>
