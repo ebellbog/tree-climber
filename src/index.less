@@ -4,15 +4,19 @@
 
 @darkSquare: #916647;
 @lightSquare: #e3bb9d;
+@borderSquare: saturate(darken(@darkSquare, 28%), 50%);
+
 @highlight: 15%;
 
 @validColor: limegreen;
 @invalidColor: red;
 @priorColor: gold;
 
-@settingsHighlight: #6ca146;
+@lightPlantColor: lighten(limegreen, 10%);
+@darkPlantColor: #176708;
 
-@bgColor: #3f6e52;//#7c3636;
+@settingsHighlight: #6ca146;
+@bgColor: #497e5e;
 @dlgColor: fade(black, 50%);
 
 @borderRadius: 3px;
@@ -344,6 +348,61 @@ body {
             display: block;
         }
     }
+
+    .row:first-child { // Give this rule priority over tree-styling rules
+        padding-top: 50px;
+    }
+}
+
+.tree-styling {
+    #svg-layer {
+        path {
+            stroke: @borderSquare;
+            stroke-width: 5px;
+        }
+
+        .vine-leaf {
+            fill: @lightPlantColor;
+            stroke: @darkPlantColor;
+            stroke-width: 3px;
+
+            offset-rotate: reverse;
+
+            &:nth-last-child(even) {
+                transform: translateY(-22px) scale(0.2);
+            }
+            &:nth-last-child(odd) {
+                transform: translateY(22px) scaleY(-1) scale(0.2);
+            }
+
+            &.prior {
+                fill: @priorColor;
+                stroke: @priorColor;
+                stroke-width: 5px;
+            }
+        }
+
+        text {
+            fill: @darkPlantColor;
+        }
+
+        rect {
+            stroke: @darkPlantColor;
+            fill: @lightPlantColor;
+            &.prior {
+                fill: @bgColor;
+            }
+        }
+    }
+
+    .row {
+        padding: 60px 0;
+    }
+    &.show-moves {
+        .row {
+            padding: 80px 0;
+        }
+    }
 }
 
 .row {
@@ -410,7 +469,7 @@ body {
     border-radius: (@squareSize/10);
     overflow: hidden;
 
-    box-shadow: (@squareSize/20) (@squareSize/13) 0 (@squareSize/20) darken(@darkSquare, 30%);
+    box-shadow: (@squareSize/20) (@squareSize/13) 0 (@squareSize/20) @borderSquare;
 
     // Checkered colors, independent of board size
     .board-row:nth-last-child(odd) .square:nth-last-child(odd),
@@ -456,7 +515,7 @@ body {
         display: none;
 
         position: relative;
-        background-color: saturate(darken(@darkSquare, 28%), 50%);
+        background-color: @borderSquare;
         width: @squareSize;
         height: @borderWidth;
 
@@ -653,7 +712,7 @@ body {
     }
 }
 
-#leaves {
+#jungle-leaves {
     z-index: -1;
     position: fixed;
     left: -25px;
@@ -665,12 +724,11 @@ body {
     left: 0;
     bottom: 0px;
 
-    opacity: .9;
-
     transform-origin: 50% 140%;
 
     &.medium-leaf {
         z-index: 2;
+        opacity: 0.8;
         width: 220px;
         transform: rotate(45deg) scaleY(1.2) translate(-60px, 170px);
         path {
@@ -679,6 +737,7 @@ body {
     }
     &.light-leaf {
         z-index: 1;
+        opacity: .9;
         width: 150px;
         transform: rotate(-5deg) scaleY(1.2);
         path {
@@ -688,13 +747,13 @@ body {
     }
     &.dark-leaf {
         z-index: 1;
+        opacity: 1;
         width: 150px;
         transform: rotate(95deg) scaleY(1.2);
         path {
             fill: #49ae3e;
         }
     }
-
 }
 
 .desktop-only {

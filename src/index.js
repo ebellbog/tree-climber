@@ -1,5 +1,6 @@
 import './index.less';
-import Leaf from '../img/jungle_leaf.svg';
+import JungleLeaf from '../img/jungle_leaf.svg';
+import VineLeaf from '../img/vine_leaf.svg';
 
 /* Constants */
 
@@ -24,7 +25,12 @@ let boards, connections, firstBoard;
 /* Initialization & event hooks */
 
 $(document).ready(() => {
-    drawLeaves();
+    // Draw decorative leaves
+    const $leaf = $(JungleLeaf).addClass('leaf');
+    const $leaves = $('#jungle-leaves');
+    ['light', 'medium', 'dark'].forEach((leafType) =>
+        $leaves.append($leaf.clone().addClass(`${leafType}-leaf`)));
+
     resetGame();
 
     $(window).on('resize', () => updateConnections());
@@ -111,7 +117,7 @@ function resetGame() {
     connections = {};
 
     $stateGraph.find('.row:not(:first-child), .board-wrapper').remove();
-    $svgLayer.empty()
+    clearSvg();
     updateLayout();
 
     firstBoard = new BishopsBoard({rows: numRows, cols: numCols, pieces: showPieces});
@@ -791,6 +797,33 @@ function updateBezier($path, {x: startX, y: startY}, {x: endX, y: endY}, control
     return $path.attr('d', coords);
 }
 
+function drawBranch(start, end) {
+    const $branch = drawBezier(start, end);
+
+    const $leaf = $(VineLeaf).find('path').addClass('vine-leaf');
+
+    const branchParts = updateBranch($branch, [$leaf, $leaf.clone()], start, end);
+    branchParts.$leaves.forEach(($leaf) => $leaf.appendTo($svgLayer));
+    return branchParts;
+}
+function updateBranch($branch, $leaves, start, end) {
+    updateBezier($branch, start, end);
+
+    const showMoves = $stateGraph.hasClass('show-moves');
+    const numLeaves = $leaves.length + showMoves;
+    const getOffset = (idx) => {
+        idx++;
+        return `calc(${100 / (numLeaves + 1) * (idx + (showMoves && idx > numLeaves / 2))}% + 12px)`
+    }
+
+    $leaves.forEach(($leaf, idx) => $leaf.css({
+        offsetPath: `path("${$branch.attr('d')}")`,
+        offsetDistance: getOffset(idx)
+    }));
+
+    return {$branch, $leaves};
+}
+
 function drawEllipse({x, y}, rX = 5, rY = 5, color = 'white') {
     const ellipse = createSvg('ellipse');
     return $(ellipse)
@@ -829,43 +862,34 @@ function updateText($text, {x, y}) {
         .attr('y', y);
 }
 
-function drawLeaves() {
-    const $leaf = $(Leaf).addClass('leaf');
-    const $leaves = $('#leaves');
-
-    $leaves.append($leaf.clone().addClass('medium-leaf'));
-    $leaves.append($leaf.clone().addClass('light-leaf'));
-    $leaves.append($leaf.clone().addClass('dark-leaf'));
-}
-
 function drawConnections() {
     clearSvg();
     const labels = [];
-    Object.entries(connections).forEach(([key, {startBoard, startLabel, endBoard, endLabel}]) => {
+    Object.entries(connections).forEach(([key, connection]) => {
+        const {startBoard, startLabel, endBoard, endLabel} = connection;
         const bottom = getBoardBottom(startBoard.$board);
         const top = getBoardTop(endBoard.$board);
 
-        const $path = drawBezier(bottom, top).addClass(key);
-        connections[key].$path = $path;
+        Object.assign(connection, drawBranch(bottom, top));
 
-        const indexDelta = endBoard.game.index - startBoard.game.index;
-        labels.push({
-            key,
-            startLabel,
-            endLabel,
-            direction: (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←',
-            midpoint: getMidpoint(bottom, top)
-        });
-    });
-
-    // Draw labels on top of connections (z-index won't work)
-    labels.forEach(({key, startLabel, endLabel, direction, midpoint}) => {
-        connections[key].$rect = drawRect(
+        const midpoint = getMidpoint(bottom, top);
+        connection.$rect = drawRect(
             {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
             LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
-        ).addClass(key);
-        connections[key].$text = drawText(midpoint, `${startLabel} ${direction} ${endLabel}`).addClass(key);
+        );
+
+        const indexDelta = endBoard.game.index - startBoard.game.index;
+        const direction = (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←';
+        connection.$text = drawText(midpoint, `${startLabel} ${direction} ${endLabel}`);
+
+        // Add key class to support highlighting prior connections
+        [connection.$rect, connection.$text, connection.$branch, ...connection.$leaves].forEach(($el) => $el.addClass(key));
     });
+
+    // Draw labels on top of connections & leaves on top of branches (z-index won't work)
+    const moveToTop = ($els) => $els.forEach(($el) => $el.detach().appendTo($svgLayer));
+    Object.values(connections).forEach(({$leaves}) => moveToTop([...$leaves]));
+    Object.values(connections).forEach(({$rect, $text}) => moveToTop([$rect, $text]));
 }
 
 function updateConnections(specificConnections) {
@@ -874,7 +898,7 @@ function updateConnections(specificConnections) {
         const top = getBoardTop(c.endBoard.$board);
         const midpoint = getMidpoint(bottom, top);
 
-        updateBezier(c.$path, bottom, top);
+        updateBranch(c.$branch, c.$leaves, bottom, top);
         updateText(c.$text, midpoint);
         updateRect(c.$rect, {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2});
     });
