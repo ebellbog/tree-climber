@@ -31,6 +31,7 @@ module.exports = (env, argv) => {
     return {
         devServer: {
             contentBase: path.resolve(__dirname),
+            port: 9000
         },
         devtool: 'eval-cheap-module-source-map',
         entry: './src/index.js',

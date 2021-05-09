@@ -503,12 +503,9 @@ body {
 
         background-color: fade(#444, 70%);
 
-        .fa-spinner {
-            position: absolute;
-            top: calc(50% - 15px);
-            left: calc(50% - 15px);
-            color: white;
-            font-size: 30px;
+        &.is-loading {
+            display: block;
+            pointer-events: all;
         }
     }
 

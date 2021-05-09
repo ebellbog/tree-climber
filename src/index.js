@@ -171,7 +171,7 @@ class BishopsBoard {
 
     initBoard(rows, cols) {
         this.$board = $(`<div class="board" id="b${Object.keys(boards).length}"></div>`);
-        this.$loadingIndicator = $('<div class="loading-indicator"><i class="fas fa-spinner fa-pulse"></i></div>');
+        this.$loadingIndicator = $('<canvas class="loading-indicator"></canvas>');
         this.$board.append(this.$loadingIndicator);
 
         this.$stats = $('<div class="board-stats"></div>');
@@ -282,33 +282,32 @@ class BishopsBoard {
                     this.expandMoves(this.game.getAllValidMoves());
                     break;
                 case 'hint':
-                    this.$loadingIndicator.show();
-                    setTimeout(() => {
-                        const winningMoves = this.game.solveGame();
-                        this.$loadingIndicator.hide();
-
-                        if (!winningMoves) return;
-
-                        this.expandMoves([winningMoves[0]]);
-                    }, 0);
+                    this.$loadingIndicator.addClass('is-loading');
+                    this.game.solveGame(this.$loadingIndicator, (winningMoves) => {
+                        setTimeout(() => {
+                            this.$loadingIndicator.removeClass('is-loading')
+                            if (winningMoves) this.expandMoves([winningMoves[0]]);
+                        }, 600);
+                    });
                     break;
                 case 'solve':
-                    this.$loadingIndicator.show();
-                    setTimeout(() => {
-                        const winningMoves = this.game.solveGame();
-                        this.$loadingIndicator.hide();
+                    this.$loadingIndicator.addClass('is-loading');
+                    this.game.solveGame(this.$loadingIndicator, (winningMoves) => {
+                        setTimeout(() => {
+                            this.$loadingIndicator.removeClass('is-loading')
 
-                        if (!winningMoves) return;
+                            if (!winningMoves) return;
 
-                        let index = 0, board = this;
-                        const delayedExpand = () => {
-                            board = board.expandMoves([winningMoves[index]])[0];
-                            $stateGraph.scrollTop(getBoardTop(board.$board).y - $('#btn-bar').height());
-                            index++;
-                            if (index < winningMoves.length) setTimeout(() => delayedExpand(), 700);
-                        };
-                        delayedExpand(this);
-                    }, 0);
+                            let index = 0, board = this;
+                            const delayedExpand = () => {
+                                board = board.expandMoves([winningMoves[index]])[0];
+                                $stateGraph.scrollTop(getBoardTop(board.$board).y - $('#btn-bar').height());
+                                index++;
+                                if (index < winningMoves.length) setTimeout(() => delayedExpand(), 700);
+                            };
+                            delayedExpand(this);
+                        }, 600);
+                    });
                     break;
                 default:
                     break;
@@ -622,7 +621,7 @@ class BishopsGame {
         }
     }
 
-    solveGame() {
+    solveGame($canvas, callback) {
         // Don't "backtrace" to games in this game's own history
         const moveHistory = this.history.concat(this.hash)
             .reduce((acc, hash) => Object.assign(acc, {[hash]: '[]'}), {});
@@ -630,10 +629,21 @@ class BishopsGame {
         let leaves = [this];
         let winningMoves;
 
+        const tree = [
+            [{children: []}]
+        ];
+
         console.time('solve');
 
-        while (leaves.length && !winningMoves) {
+        const solveNextLayer = () => {
+            if (!leaves.length || winningMoves) {
+                console.timeEnd('solve');
+                winningMoves = winningMoves ? JSON.parse(`[${winningMoves}]`).slice(1) : false;
+                return callback(winningMoves);
+            }
+
             const newLeaves = [];
+            let treeIndex = 0;
             for (let i = 0; i < leaves.length; i++) {
                 const possibleGames = leaves[i].getPossibleGames();
                 for (let j = 0; j < possibleGames.length; j++) {
@@ -643,6 +653,10 @@ class BishopsGame {
                     possibleGame.analyzeGame();
 
                     newLeaves.push(possibleGame);
+
+                    tree[tree.length - 1][i].children.push(treeIndex);
+                    treeIndex++;
+
                     moveHistory[possibleGame.hash] = `${moveHistory[leaves[i].hash]}, ${JSON.stringify(possibleGame.lastMove)}`; // Accumulate moves
 
                     if (possibleGame.solvedPieces === possibleGame.totalPieces) {
@@ -651,12 +665,15 @@ class BishopsGame {
                     }
                 }
             }
+
+            tree.push(newLeaves.map((leaf) => ({children: []})));
+            sketchTree($canvas, tree);
+
             leaves = newLeaves;
+            window.requestAnimationFrame(solveNextLayer);
         }
 
-        console.timeEnd('solve');
-
-        return (winningMoves) ? JSON.parse(`[${winningMoves}]`).slice(1) : false;
+        solveNextLayer();
     }
 
     getAllValidMoves(includePriors = false) {
@@ -920,6 +937,66 @@ function updateConnections(specificConnections) {
             updateRect(c.$rect, {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2});
         }
     });
+}
+
+/* Canvas methods */
+
+function sketchTree($sketch, treeData) {
+    const width = 1.5 * firstBoard.$board.innerWidth();
+    const height = 1.5 * firstBoard.$board.innerHeight();
+    $sketch.attr({width, height});
+
+    const sketchCtx= $sketch[0].getContext('2d');
+    sketchCtx.clearRect(0, 0, width, height);
+    sketchCtx.lineWidth = 2;
+
+    // Calculate coordinates & draw
+
+    const margin = 10;
+    const maxSize = Math.max(...(treeData).map((row) => row.length));
+    const spacing = (width - (2 * margin)) / (maxSize - 1);
+
+    for (let t = 0; t < treeData.length; t++) {
+        const treeRow = treeData[t];
+
+        const rowHeight = margin + t * ((height - 2 * margin) / (treeData.length - 1));
+        const numLeaves = treeRow.length;
+
+        const rowWidth = (numLeaves - 1) * spacing;
+        let x = (width - 2 * margin - rowWidth) / 2 + margin;
+
+        for (let l = 0; l < numLeaves; l++) {
+            const leaf = treeRow[l];
+            leaf.y = rowHeight;
+            leaf.x = x;
+            x += spacing;
+        }
+
+        if (t > 0) {
+            const prevRow = treeData[t-1];
+            prevRow.forEach((node) => node.children.forEach((c, idx) => {
+                const child = treeRow[c];
+
+                sketchCtx.strokeStyle = `hsl(${110 + 250 * idx / node.children.length}, 90%, 50%)`;
+                drawLine(sketchCtx, node, treeRow[c])
+            }));
+        }
+    }
+}
+
+function drawPoint(ctx, {x, y}, r = 4) {
+    ctx.globalCompositeOperation='source-over';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawLine(ctx, {x: startX, y: startY}, {x: endX, y: endY}) {
+    ctx.globalCompositeOperation='destination-over';
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
 }
 
 /* Utility methods */
