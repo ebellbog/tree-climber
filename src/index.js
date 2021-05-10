@@ -10,6 +10,8 @@ const LABEL_WIDTH = 78;
 const LABEL_HEIGHT = 24;
 const LABEL_RADIUS = 12;
 
+const SOLUTION_TREE_DELAY = 850;
+
 /* Globals */
 
 const $svgLayer = $('#svg-layer');
@@ -287,7 +289,7 @@ class BishopsBoard {
                         setTimeout(() => {
                             this.$loadingIndicator.removeClass('is-loading')
                             if (winningMoves) this.expandMoves([winningMoves[0]]);
-                        }, 600);
+                        }, SOLUTION_TREE_DELAY);
                     });
                     break;
                 case 'solve':
@@ -306,7 +308,7 @@ class BishopsBoard {
                                 if (index < winningMoves.length) setTimeout(() => delayedExpand(), 700);
                             };
                             delayedExpand(this);
-                        }, 600);
+                        }, SOLUTION_TREE_DELAY);
                     });
                     break;
                 default:
@@ -626,21 +628,13 @@ class BishopsGame {
         const moveHistory = this.history.concat(this.hash)
             .reduce((acc, hash) => Object.assign(acc, {[hash]: '[]'}), {});
 
-        let leaves = [this];
-        let winningMoves;
-
+        let winningMoves, leaves = [this];
         const tree = [
             [{children: []}]
         ];
 
-        console.time('solve');
-
         const solveNextLayer = () => {
-            if (!leaves.length || winningMoves) {
-                console.timeEnd('solve');
-                winningMoves = winningMoves ? JSON.parse(`[${winningMoves}]`).slice(1) : false;
-                return callback(winningMoves);
-            }
+            if (!leaves.length) return callback(false);
 
             const newLeaves = [];
             let treeIndex = 0;
@@ -659,15 +653,19 @@ class BishopsGame {
 
                     moveHistory[possibleGame.hash] = `${moveHistory[leaves[i].hash]}, ${JSON.stringify(possibleGame.lastMove)}`; // Accumulate moves
 
-                    if (possibleGame.solvedPieces === possibleGame.totalPieces) {
+                    if (possibleGame.solvedPieces === possibleGame.totalPieces && !winningMoves) {
                         winningMoves = moveHistory[possibleGame.hash];
-                        break;
+                        // Technically, we could return here, but the visualization looks nicer if we finish analyzing the layer
                     }
                 }
             }
 
             tree.push(newLeaves.map((leaf) => ({children: []})));
             sketchTree($canvas, tree);
+
+            if (winningMoves) {
+                return callback(JSON.parse(`[${winningMoves}]`).slice(1));
+            }
 
             leaves = newLeaves;
             window.requestAnimationFrame(solveNextLayer);
@@ -942,33 +940,41 @@ function updateConnections(specificConnections) {
 /* Canvas methods */
 
 function sketchTree($sketch, treeData) {
-    const width = 1.5 * firstBoard.$board.innerWidth();
-    const height = 1.5 * firstBoard.$board.innerHeight();
+    const width = 2 * firstBoard.$board.innerWidth();
+    const height = 2 * firstBoard.$board.innerHeight();
     $sketch.attr({width, height});
 
     const sketchCtx= $sketch[0].getContext('2d');
     sketchCtx.clearRect(0, 0, width, height);
-    sketchCtx.lineWidth = 2;
 
     // Calculate coordinates & draw
 
-    const margin = 10;
+    const MARGIN = 10;
+
     const maxSize = Math.max(...(treeData).map((row) => row.length));
-    const spacing = (width - (2 * margin)) / (maxSize - 1);
+
+    const SIZE_THRESHOLD = 150;
+    sketchCtx.lineWidth = (maxSize > SIZE_THRESHOLD) ? 1 : 2;
 
     for (let t = 0; t < treeData.length; t++) {
         const treeRow = treeData[t];
 
-        const rowHeight = margin + t * ((height - 2 * margin) / (treeData.length - 1));
-        const numLeaves = treeRow.length;
+        const rowHeight = MARGIN + t * ((height - 2 * MARGIN) / (treeData.length - 1));
+        const nodeCount = treeRow.length;
 
-        const rowWidth = (numLeaves - 1) * spacing;
-        let x = (width - 2 * margin - rowWidth) / 2 + margin;
+        let x, spacing;
+        if (nodeCount === 1) {
+            x = width / 2;
+        } else {
+            spacing = Math.min((width - 2 * MARGIN) / (nodeCount - 1), width / 4);
+            const rowWidth = spacing * (nodeCount - 1);
+            x = (width - 2 * MARGIN - rowWidth) / 2 + MARGIN;
+        }
 
-        for (let l = 0; l < numLeaves; l++) {
-            const leaf = treeRow[l];
-            leaf.y = rowHeight;
-            leaf.x = x;
+        for (let l = 0; l < nodeCount; l++) {
+            const node = treeRow[l];
+            node.y = rowHeight;
+            node.x = x;
             x += spacing;
         }
 
@@ -976,15 +982,24 @@ function sketchTree($sketch, treeData) {
             const prevRow = treeData[t-1];
             prevRow.forEach((node) => node.children.forEach((c, idx) => {
                 const child = treeRow[c];
+                child.x = (3 * node.x + child.x) / 4; // weight positions towards parent
 
-                sketchCtx.strokeStyle = `hsl(${110 + 250 * idx / node.children.length}, 90%, 50%)`;
-                drawLine(sketchCtx, node, treeRow[c])
+                sketchCtx.strokeStyle = `hsl(${110 + 250 * idx / node.children.length}, 90%, 60%)`;
+                drawLine(sketchCtx, node, child)
+
+                if (maxSize < SIZE_THRESHOLD) {
+                    sketchCtx.fillStyle = sketchCtx.strokeStyle;
+                    drawPoint(sketchCtx, child);
+                    if (t === 1 && idx === 0) {
+                        drawPoint(sketchCtx, node); // mark root
+                    }
+                }
             }));
         }
     }
 }
 
-function drawPoint(ctx, {x, y}, r = 4) {
+function drawPoint(ctx, {x, y}, r = 3) {
     ctx.globalCompositeOperation='source-over';
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
