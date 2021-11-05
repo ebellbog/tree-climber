@@ -21,7 +21,6 @@
 
 @borderRadius: 3px;
 @boxShadow: 0 0 8px fade(black, 50%);
-@bdFilter: blur(3px);
 
 @defaultFont: 'Titillium Web', sans-serif;
 
@@ -56,6 +55,11 @@ body {
     }
 }
 
+.bg-blur {
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+
 #btn-bar {
     z-index: 1;
     position: absolute;
@@ -83,9 +87,7 @@ body {
         white-space: nowrap;
 
         color: fade(white, 90%);
-
         background-color: fade(@bgColor, 60%);
-        backdrop-filter: @bdFilter;
 
         .emoji {
             filter: contrast(.1) brightness(5);
@@ -122,9 +124,10 @@ body {
     transition-delay: .45s;
 }
 #hide-settings {
-    float: right;
-    margin: 6px 0 0 0;
-    padding-right: 0;
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    transform: translateY(-50%);
 
     background-color: transparent;
 }
@@ -139,24 +142,21 @@ body {
     top: 0;
     left: -320px;
 
-    width: 300px;
-    overflow: hidden;
-
-    background-color: @dlgColor;
-    backdrop-filter: @bdFilter;
-
-    border-bottom-right-radius: 5px;
-
     transition: left .65s;
 
+    width: 300px;
+    border-bottom-right-radius: 5px;
+    overflow: hidden;
+
     color: white;
+    background-color: @dlgColor;
 
     select, .btn-group, input, .checkbox {
         border-radius: @borderRadius;
     }
 
     select {
-        padding: 5px 8px;
+        padding: 4px 8px;
 
         font-size: 14px;
         font-weight: 400;
@@ -164,6 +164,7 @@ body {
     }
 
     .settings-header {
+        position: relative;
         background-color: @settingsHighlight;
 
         width: 100%;
@@ -175,7 +176,7 @@ body {
             font-weight: 600;
         }
         select {
-            margin: 7px 3px;
+            margin: 8px 3px;
         }
     }
 
@@ -321,6 +322,7 @@ body {
     &.show-moves {
         .board {
             box-shadow: 0 0 0 2px black;
+            background-color: @borderSquare;
         }
         .border-square {
             display: inline-block;
@@ -362,18 +364,18 @@ body {
             stroke-width: 5px;
         }
 
-        .vine-leaf {
+        .branch-leaf {
+            display: block;
+
             fill: @lightPlantColor;
             stroke: @darkPlantColor;
             stroke-width: 3px;
 
-            offset-rotate: reverse;
-
-            &:nth-last-child(even) {
-                transform: translateY(-22px) scale(0.2);
+            &.left-leaf {
+                transform: translate(-5px, 22px) scaleY(-1) scale(0.2);
             }
-            &:nth-last-child(odd) {
-                transform: translateY(22px) scaleY(-1) scale(0.2);
+            &.right-leaf {
+                transform: translate(-5px, -22px) scale(0.2);
             }
 
             &.prior {
@@ -648,12 +650,10 @@ body {
 
     pointer-events: all;
 
-    background-color: fade(white, 65%);
+    background-color: fade(white, 70%);
     box-shadow: @boxShadow;
-    backdrop-filter: @bdFilter;
 
     border-radius: @borderRadius;
-    overflow: hidden;
 
     .menu-option {
         padding: 6px 26px 6px 10px;
@@ -668,6 +668,16 @@ body {
         &:hover {
             background-color: #444;
             color: white;
+        }
+
+        // For some reason, using {overflow: hidden} on .context-menu to round these corners introduced a small visual glitch on Safari
+        &:first-child {
+            border-top-left-radius: @borderRadius;
+            border-top-right-radius: @borderRadius;
+        }
+        &:last-child {
+            border-bottom-left-radius: @borderRadius;
+            border-bottom-right-radius: @borderRadius;
         }
     }
 }
@@ -689,6 +699,10 @@ body {
         &.prior {
             stroke: @priorColor;
         }
+    }
+
+    .branch-leaf {
+        display: none;
     }
 
     text {
@@ -716,6 +730,9 @@ body {
             stroke: @priorColor;
         }
     }
+}
+#svg-templates {
+    display: none;
 }
 
 #jungle-leaves {

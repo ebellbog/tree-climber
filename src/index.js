@@ -4,17 +4,17 @@ import VineLeaf from '../img/vine_leaf.svg';
 
 /* Constants */
 
-const MARGIN = 12;
-
-const LABEL_WIDTH = 78;
-const LABEL_HEIGHT = 24;
-const LABEL_RADIUS = 12;
-
-const SOLUTION_TREE_DELAY = 850;
+const BOARD_MARGIN = 12; // Vertical spacing between board top/bottom & branch endpoints
+const TREE_MARGIN = 10; // Spacing around solution tree in canvas preview
+const SOLUTION_TREE_DELAY = 850; // Milliseconds between expanding successive moves of solution
 
 /* Globals */
 
 const $svgLayer = $('#svg-layer');
+const $allBranches = $('#all-branches');
+const $allLeaves = $('#all-leaves');
+const $allLabels = $('#all-labels');
+
 const $stateGraph = $('#state-graph');
 
 let numRows = 4;
@@ -60,9 +60,11 @@ $(document).ready(() => {
     $('#show-moves').on('change', function() {
         showMoves = this.checked;
         $stateGraph.toggleClass('show-moves', showMoves);
+
+        updateLeafSpacing();
         updateLayout();
         updateScroll();
-        drawConnections();
+        updateConnections();
     });
     $('#show-stats').on('change', function() {
         $stateGraph.toggleClass('show-stats', this.checked);
@@ -77,7 +79,7 @@ $(document).ready(() => {
     $('#draw-branches').on('change', function() {
         drawBranches = this.checked;
         $stateGraph.toggleClass('tree-styling', drawBranches);
-        drawConnections();
+        updateConnections();
     });
 
     $('#num-rows').on('change', function() {
@@ -120,6 +122,14 @@ function updateLayout() {
         width: $stateGraph[0].scrollWidth,
         height: $stateGraph[0].scrollHeight,
     });
+}
+
+function updateLeafSpacing() {
+    const showMoves =  $stateGraph.hasClass('show-moves');
+    const leafOffset = (showMoves ? .2 : .33); // Spread out leaves when label is in between
+
+    $allLeaves.find('.left-leaf + animateMotion').attr('keyPoints', `${1 - leafOffset};${1 - leafOffset}`);
+    $allLeaves.find('.right-leaf + animateMotion').attr('keyPoints', `${leafOffset};${leafOffset}`);
 }
 
 function resetGame() {
@@ -383,7 +393,7 @@ class BishopsBoard {
     }
 
     expandMoves(moves) {
-        const expandedBoards = [];
+        const expandedBoards = [], newConnections = [];
         moves.forEach((move) => {
             const {hash} = new BishopsGame({src: {game: this.game, move}});
             if (boards[hash]) {
@@ -418,6 +428,7 @@ class BishopsBoard {
                     endBoard,
                     endLabel
                 };
+                newConnections[key] = connections[key]
 
                 priorBoard.$board.toggleClass('extra-pop');
             } else {
@@ -435,6 +446,7 @@ class BishopsBoard {
                     endBoard: newBoard,
                     endLabel: this.formatCoords(...move[1])
                 };
+                newConnections[key] = connections[key]
             }
         });
 
@@ -444,7 +456,10 @@ class BishopsBoard {
             board.renderStats();
         });
 
-        drawConnections();
+        addConnections(newConnections);
+        updateConnections();
+        updateLabels();
+
         return expandedBoards;
     }
 
@@ -805,135 +820,67 @@ class BishopsGame {
 
 /* Draw methods */
 
-function clearSvg() {
-    $svgLayer.empty();
-}
-
 function createSvg(element) {
     return document.createElementNS('http://www.w3.org/2000/svg', element);
 }
-
-function drawBezier(start, end, controlDist = 40) {
-    const path = createSvg('path');
-    return updateBezier($(path), start, end, controlDist).appendTo($svgLayer);
+function clearSvg() {
+    $allBranches.add($allLeaves).add($allLabels).empty();
 }
-function updateBezier($path, {x: startX, y: startY}, {x: endX, y: endY}, controlDist = 40) {
+
+function addBranch(key) {
+    const $branchGroup = $('#svg-templates .branch-group').clone().appendTo($allBranches);
+    const $branch = $branchGroup.find('.branch').attr('id', key);
+    const $vineLeaf = $(VineLeaf).find('path');
+
+    $branchGroup
+        .find('.branch, .branch-leaf, .label-bg, .label-text')
+        .addClass(key); // Add key class to support highlighting prior connections
+    $branchGroup
+        .find('mpath')
+        .attr('xlink:href', `#${key}`);
+    $branchGroup
+        .find('.leaf-group')
+        .clone()
+        .appendTo($branchGroup)
+        .find('.branch-leaf')
+        .removeClass('left-leaf').addClass('right-leaf');
+    $branchGroup
+        .find('.branch-leaf')
+        .attr('d', $vineLeaf.attr('d'));
+    $branchGroup
+        .find('.leaf-group')
+        .detach()
+        .appendTo($allLeaves);
+
+    const $label = $branchGroup
+        .find('.label-group').detach().appendTo($allLabels).find('.label-text');
+
+    updateLeafSpacing();
+    return {$branch, $label};
+}
+function updateBranch({$branch}, {x: startX, y: startY}, {x: endX, y: endY}, controlDist = 40) {
     const coords = `M ${startX} ${startY} C ${startX} ${startY + controlDist}, ${endX} ${endY - controlDist}, ${endX} ${endY}`;
-    return $path.attr('d', coords);
+    return $branch.attr('d', coords);
 }
 
-function drawBranch(start, end) {
-    const $branch = drawBezier(start, end);
-
-    const $leaf = $(VineLeaf).find('path').addClass('vine-leaf');
-
-    const branchParts = updateBranch($branch, [$leaf, $leaf.clone()], start, end);
-    branchParts.$leaves.forEach(($leaf) => $leaf.appendTo($svgLayer));
-    return branchParts;
-}
-function updateBranch($branch, $leaves, start, end) {
-    updateBezier($branch, start, end);
-
-    const showMoves = $stateGraph.hasClass('show-moves');
-    const numLeaves = $leaves.length + showMoves;
-    const getOffset = (idx) => {
-        idx++;
-        return `calc(${100 / (numLeaves + 1) * (idx + (showMoves && idx > numLeaves / 2))}% + 12px)`
-    }
-
-    $leaves.forEach(($leaf, idx) => $leaf.css({
-        offsetPath: `path("${$branch.attr('d')}")`,
-        offsetDistance: getOffset(idx)
-    }));
-
-    return {$branch, $leaves};
-}
-
-function drawEllipse({x, y}, rX = 5, rY = 5, color = 'white') {
-    const ellipse = createSvg('ellipse');
-    return $(ellipse)
-        .attr('cx', x)
-        .attr('cy', y)
-        .attr('rx', rX)
-        .attr('ry', rY)
-        .attr('fill', color)
-        .appendTo($svgLayer);
-}
-
-function drawRect(coords, width, height, radius = 0, color = 'white') {
-    const rect = createSvg('rect');
-    return updateRect($(rect), coords)
-        .attr('width', width)
-        .attr('height', height)
-        .attr('rx', radius)
-        .attr('fill', color)
-        .appendTo($svgLayer);
-}
-function updateRect($rect, {x, y}) {
-    return $rect
-        .attr('x', x)
-        .attr('y', y);
-}
-
-function drawText(coords, content) {
-    const text = createSvg('text');
-    return updateText($(text), coords)
-        .html(content)
-        .appendTo($svgLayer);
-}
-function updateText($text, {x, y}) {
-    return $text
-        .attr('x', x)
-        .attr('y', y);
-}
-
-function drawConnections() {
-    clearSvg();
-    Object.entries(connections).forEach(([key, connection]) => {
-        const {startBoard, startLabel, endBoard, endLabel} = connection;
-        const bottom = getBoardBottom(startBoard.$board);
-        const top = getBoardTop(endBoard.$board);
-
-        if (drawBranches) Object.assign(connection, drawBranch(bottom, top));
-        else connection.$path = drawBezier(bottom, top);
-
-        if (showMoves) {
-            const midpoint = getMidpoint(bottom, top);
-            connection.$rect = drawRect(
-                {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2},
-                LABEL_WIDTH, LABEL_HEIGHT, LABEL_RADIUS
-            );
-
-            const indexDelta = endBoard.game.index - startBoard.game.index;
-            const direction = (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←';
-            connection.$text = drawText(midpoint, `${startLabel} ${direction} ${endLabel}`);
-        }
-
-        // Add key class to support highlighting prior connections
-        const $connectionPieces = (showMoves ? [connection.$rect, connection.$text] : [])
-            .concat(drawBranches ? [connection.$branch, ...connection.$leaves] : [connection.$path]);
-        $connectionPieces.forEach(($el) => $el.addClass(key));
+function addConnections(newConnections) {
+    Object.entries(newConnections).forEach(([key, connection]) => {
+        Object.assign(connection, addBranch(key));
     });
-
-    // Draw labels on top of connections & leaves on top of branches (z-index won't work)
-    const moveToTop = ($els) => $els.forEach(($el) => $el.detach().appendTo($svgLayer));
-    if (drawBranches) Object.values(connections).forEach(({$leaves}) => moveToTop([...$leaves]));
-    if (showMoves) Object.values(connections).forEach(({$rect, $text}) => moveToTop([$rect, $text]));
 }
-
 function updateConnections(specificConnections) {
     (specificConnections || Object.values(connections)).forEach((c) => {
         const bottom = getBoardBottom(c.startBoard.$board);
         const top = getBoardTop(c.endBoard.$board);
+        updateBranch(c, bottom, top);
+    });
+}
 
-        if (drawBranches) updateBranch(c.$branch, c.$leaves, bottom, top);
-        else updateBezier(c.$path, bottom, top);
-
-        if (showMoves) {
-            const midpoint = getMidpoint(bottom, top);
-            updateText(c.$text, midpoint);
-            updateRect(c.$rect, {x: midpoint.x - LABEL_WIDTH / 2, y: midpoint.y - LABEL_HEIGHT / 2});
-        }
+function updateLabels() {
+    Object.values(connections).forEach(({startBoard, startLabel, endBoard, endLabel, $label}) => {
+        const indexDelta = endBoard.game.index - startBoard.game.index;
+        const direction = (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←';
+        $label.html(`${startLabel} ${direction} ${endLabel}`);
     });
 }
 
@@ -949,8 +896,6 @@ function sketchTree($sketch, treeData) {
 
     // Calculate coordinates & draw
 
-    const MARGIN = 10;
-
     const maxSize = Math.max(...(treeData).map((row) => row.length));
 
     const SIZE_THRESHOLD = 150;
@@ -959,16 +904,16 @@ function sketchTree($sketch, treeData) {
     for (let t = 0; t < treeData.length; t++) {
         const treeRow = treeData[t];
 
-        const rowHeight = MARGIN + t * ((height - 2 * MARGIN) / (treeData.length - 1));
+        const rowHeight = TREE_MARGIN + t * ((height - 2 * TREE_MARGIN) / (treeData.length - 1));
         const nodeCount = treeRow.length;
 
         let x, spacing;
         if (nodeCount === 1) {
             x = width / 2;
         } else {
-            spacing = Math.min((width - 2 * MARGIN) / (nodeCount - 1), width / 4);
+            spacing = Math.min((width - 2 * TREE_MARGIN) / (nodeCount - 1), width / 4);
             const rowWidth = spacing * (nodeCount - 1);
-            x = (width - 2 * MARGIN - rowWidth) / 2 + MARGIN;
+            x = (width - 2 * TREE_MARGIN - rowWidth) / 2 + TREE_MARGIN;
         }
 
         for (let l = 0; l < nodeCount; l++) {
@@ -1023,11 +968,10 @@ function oppositeColor(color) {
 function getBoardTop($board) {
     const {top, left} = $board.offset();
     const width = $board.outerWidth();
-    const height = $board.outerHeight();
 
     return {
         x: left + scrollLeft + width/2,
-        y: top + scrollTop - MARGIN
+        y: top + scrollTop - BOARD_MARGIN
     };
 }
 
@@ -1038,10 +982,6 @@ function getBoardBottom($board) {
 
     return {
         x: left + scrollLeft + width/2,
-        y: top + scrollTop + height + MARGIN
+        y: top + scrollTop + height + BOARD_MARGIN
     };
-}
-
-function getMidpoint(start, end) {
-    return {x: (start.x + end.x) / 2, y: (start.y + end.y) / 2};
 }
