@@ -1,0 +1,31 @@
+<div class="board-wrapper">
+    <div class="board" id="{{id}}">
+        <div>
+            <div></div>
+                {{#each cols}}
+                {{/each}}
+            <div></div>
+        </div>
+        {{#each rows}}
+            <div class="board-row" data-row="{{@index}}">
+                <div></div>
+                    {{#each cols}}
+                    {{/each}}
+                <div></div>
+            </div>
+        {{/each}}
+        <div>
+            <div></div>
+                {{#each cols}}
+                {{/each}}
+            <div></div>
+        </div>
+        <canvas class="loading-indicator"></canvas>
+    </div>
+    <div class="board-stats bg-blur"></div>
+    <div class="context-menu bg-blur">
+        <div class="menu-option" data-action="hint">Get a hint</div>
+        <div class="menu-option" data-action="solve">Solve game from here</div>
+        <div class="menu-option" data-action="expand">Make all moves</div>
+    </div>
+</div>

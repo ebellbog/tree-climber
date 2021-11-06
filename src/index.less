@@ -1,5 +1,5 @@
 @squareSize: 40px;
-@borderWidth: (@squareSize/2.75);
+@borderWidth: (@squareSize/2.5);
 @fontSize: 16px;
 
 @darkSquare: #916647;
@@ -53,11 +53,6 @@ body {
     .prior-color {
         color: @priorColor;
     }
-}
-
-.bg-blur {
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
 }
 
 #btn-bar {
@@ -192,7 +187,6 @@ body {
         label {
             display: inline-block;
             font-weight: 400;
-            user-select: none;
             width: 95px;
             white-space: nowrap;
         }
@@ -255,6 +249,10 @@ body {
                     background-color: white;
                 }
             }
+
+            label {
+                cursor: pointer;
+            }
         }
 
         .help-item {
@@ -291,7 +289,6 @@ body {
             float: left;
 
             cursor: pointer;
-            user-select: none;
 
             text-transform: uppercase;
             font-size: 12px;
@@ -419,21 +416,19 @@ body {
     display: inline-block;
     position: relative;
 
-    pointer-events: none;
-
     margin: 0 24px;
 
     .board-stats {
         display: none;
 
-        z-index: 2;
         position: absolute;
-        top: 0px;
+        top: 0;
         left: 0;
 
         transform: translateX(-100%) translateX(-10px);
 
         padding: 0 10px;
+        box-sizing: border-box;
 
         border-radius: 4px;
 
@@ -444,7 +439,21 @@ body {
         text-align: left;
 
         .stats-row {
+            cursor: default;
             margin: 6px 0;
+
+            .stats-label {
+                display: inline-block;
+
+                overflow-x: hidden;
+                width: 0;
+                transition: width .6s;
+
+                margin-bottom: -6px;
+                margin-left: 2px;
+
+                font-weight: 600;
+            }
 
             &.complete {
                 font-weight: 600;
@@ -457,6 +466,12 @@ body {
             &.solved {
                 font-weight: 600;
                 color: @validColor;
+            }
+        }
+
+        &:hover {
+            .stats-row .stats-label {
+                width: 100px;
             }
         }
     }
@@ -504,6 +519,7 @@ body {
         height: 100%;
 
         background-color: fade(#333, 75%);
+        border-radius: @borderRadius;
 
         &.is-loading {
             display: block;
@@ -527,9 +543,7 @@ body {
 
             color: white;
             opacity: 0.65;
-            font-size: @borderWidth*.8;
-
-            user-select: none;
+            font-size: @borderWidth*.75;
         }
 
         &:first-child, &:last-child {
@@ -663,7 +677,6 @@ body {
         font-size: 14px;
 
         cursor: pointer;
-        user-select: none;
 
         &:hover {
             background-color: #444;
@@ -783,4 +796,19 @@ body {
     @media screen and (max-width: 850px) {
         display: none;
     }
+}
+
+.bg-blur {
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+
+#settings label,
+#settings .toggle-btn,
+.board-stats .stats-row,
+.context-menu .menu-option,
+.border-square, .square
+{
+    user-select: none;
+    -webkit-user-select: none;
 }

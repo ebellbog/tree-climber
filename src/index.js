@@ -1,4 +1,7 @@
 import './index.less';
+
+import BoardStatsTemplate from './templates/BoardStats.handlebars';
+
 import JungleLeaf from '../img/jungle_leaf.svg';
 import VineLeaf from '../img/vine_leaf.svg';
 
@@ -186,7 +189,7 @@ class BishopsBoard {
         this.$loadingIndicator = $('<canvas class="loading-indicator"></canvas>');
         this.$board.append(this.$loadingIndicator);
 
-        this.$stats = $('<div class="board-stats"></div>');
+        this.$stats = $('<div class="board-stats bg-blur"></div>');
         this.$menu = $('.context-menu:last').clone();
 
         this.$boardWrapper = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats, this.$menu);
@@ -458,7 +461,7 @@ class BishopsBoard {
 
         addConnections(newConnections);
         updateConnections();
-        updateLabels();
+        updateMoveLabels();
 
         return expandedBoards;
     }
@@ -486,9 +489,11 @@ class BishopsBoard {
             (this.game.exploredOptions === this.game.totalOptions) ? 'complete' : '';
 
         this.$stats.html(
-            `<div class="stats-row"><i class="fa fa-fw fa-hashtag"></i> &nbsp;${this.game.index}</div>` +
-            `<div class="stats-row ${solvedClass}"><i class="fa fa-fw fa-star"></i> &nbsp;${solvedRatio}</div>` +
-            `<div class="stats-row ${connectionsClass}"><i class="fas fa-fw fa-project-diagram"></i> &nbsp;${connectionsRatio}</div>`
+            BoardStatsTemplate({
+                index: this.game.index,
+                connectionsClass, connectionsRatio,
+                solvedClass, solvedRatio,
+            })
         );
 
         const remainingOptions = this.game.totalOptions - this.game.exploredOptions;
@@ -876,7 +881,7 @@ function updateConnections(specificConnections) {
     });
 }
 
-function updateLabels() {
+function updateMoveLabels() {
     Object.values(connections).forEach(({startBoard, startLabel, endBoard, endLabel, $label}) => {
         const indexDelta = endBoard.game.index - startBoard.game.index;
         const direction = (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←';
