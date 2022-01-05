@@ -4,6 +4,7 @@ import BoardStatsTemplate from './templates/BoardStats.handlebars';
 
 import JungleLeaf from '../img/jungle_leaf.svg';
 import VineLeaf from '../img/vine_leaf.svg';
+import MonkeyIcon from '../img/monkey_icon.png';
 
 /* Constants */
 
