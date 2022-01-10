@@ -10,7 +10,8 @@ import MonkeyIcon from '../img/monkey_icon.png';
 
 const BOARD_MARGIN = 12; // Vertical spacing between board top/bottom & branch endpoints
 const TREE_MARGIN = 10; // Spacing around solution tree in canvas preview
-const SOLUTION_TREE_DELAY = 850; // Milliseconds between expanding successive moves of solution
+const SOLUTION_TREE_DELAY = 850; // Milliseconds to display full tree before beginning to expand moves
+const EXPAND_MOVES_DELAY = 700; // Milliseconds between expanding successive moves of solution
 
 /* Globals */
 
@@ -34,17 +35,20 @@ let boards, connections, firstBoard;
 
 $(document).ready(() => {
     // Draw decorative leaves
+
     const $leaf = $(JungleLeaf).addClass('leaf');
     const $leaves = $('#jungle-leaves');
     ['light', 'medium', 'dark'].forEach((leafType) =>
         $leaves.append($leaf.clone().addClass(`${leafType}-leaf`)));
 
-    resetGame();
+    // Hook up window events
 
     $(window).on('resize', () => updateConnections());
 
     $stateGraph.on('scroll', updateScroll);
     updateScroll();
+
+    // Hook up settings events
 
     $('#show-settings, #hide-settings').on('click', () => {
         $('body').toggleClass('show-settings');
@@ -101,6 +105,8 @@ $(document).ready(() => {
         }
     });
 
+    // Hook up toolbar buttons
+
     $('#reset-layout').on('click', () => {
         $stateGraph.find('.board-wrapper').css({left: 0, top: 0});
         updateLayout();
@@ -109,9 +115,15 @@ $(document).ready(() => {
     });
     $('#reset-game').on('click', resetGame);
 
+    // Hook up context menu
+
     $('body').on('click', () => {
         $('.context-menu').hide();
     });
+
+    // Reset & start game
+
+    resetGame();
 });
 
 // Cache these values for a very minor optimization when dragging
@@ -319,7 +331,7 @@ class BishopsBoard {
                                 board = board.expandMoves([winningMoves[index]])[0];
                                 $stateGraph.scrollTop(getBoardTop(board.$board).y - $('#btn-bar').height());
                                 index++;
-                                if (index < winningMoves.length) setTimeout(() => delayedExpand(), 700);
+                                if (index < winningMoves.length) setTimeout(() => delayedExpand(), EXPAND_MOVES_DELAY);
                             };
                             delayedExpand(this);
                         }, SOLUTION_TREE_DELAY);
@@ -400,42 +412,42 @@ class BishopsBoard {
         const expandedBoards = [], newConnections = [];
         moves.forEach((move) => {
             const {hash} = new BishopsGame({src: {game: this.game, move}});
-            if (boards[hash]) {
-                const priorBoard = boards[hash];
-                expandedBoards.push(priorBoard);
+            let priorBoard = boards[hash];
+            if (priorBoard) { // If creating a connection to a pre-existing board
+                if (this.game.connectGame(priorBoard.game)) { // And the connection doesn't already exist
+                    // Create two-way link between games
+                    priorBoard.game.connectGame(this.game);
 
-                // Create two-way link between games
-                this.game.connectGame(priorBoard.game);
-                priorBoard.game.connectGame(this.game);
+                    const rowIdx = this.getRowIdx();
+                    const priorIdx = this.getRowIdx(priorBoard.$board);
 
-                const rowIdx = this.getRowIdx();
-                const priorIdx = this.getRowIdx(priorBoard.$board);
+                    // Determine start & end based on row order, from top to bottom
+                    let startBoard, startLabel, endBoard, endLabel;
+                    if (rowIdx > priorIdx) {
+                        startBoard = priorBoard;
+                        startLabel = this.formatCoords(...move[1]);
+                        endBoard = this;
+                        endLabel = this.formatCoords(...move[0]);
+                    } else {
+                        startBoard = this;
+                        startLabel = this.formatCoords(...move[0]);
+                        endBoard = priorBoard;
+                        endLabel = this.formatCoords(...move[1]);
+                    }
 
-                // Determine start & end based on row order, from top to bottom
-                let startBoard, startLabel, endBoard, endLabel;
-                if (rowIdx > priorIdx) {
-                    startBoard = priorBoard;
-                    startLabel = this.formatCoords(...move[1]);
-                    endBoard = this;
-                    endLabel = this.formatCoords(...move[0]);
-                } else {
-                    startBoard = this;
-                    startLabel = this.formatCoords(...move[0]);
-                    endBoard = priorBoard;
-                    endLabel = this.formatCoords(...move[1]);
+                    const key = this.getConnectionKey(this, priorBoard);
+                    connections[key] = {
+                        startBoard,
+                        startLabel,
+                        endBoard,
+                        endLabel
+                    };
+                    newConnections[key] = connections[key]
                 }
 
-                const key = this.getConnectionKey(this, priorBoard);
-                connections[key] = {
-                    startBoard,
-                    startLabel,
-                    endBoard,
-                    endLabel
-                };
-                newConnections[key] = connections[key]
-
                 priorBoard.$board.toggleClass('extra-pop');
-            } else {
+                expandedBoards.push(priorBoard);
+            } else { // If creating a new board...
                 const newBoard = new BishopsBoard({src: {board: this, move}});
 
                 newBoard.insertBoard(this.getRow());
@@ -716,8 +728,11 @@ class BishopsGame {
         return this.getAllValidMoves(true).map((move) => new BishopsGame({src: {game: this, move}}));
     }
 
+    // Returns true if successful, but false if already connected
     connectGame(game) {
+        if (this.connectedGames[game.hash]) return false;
         this.connectedGames[game.hash] = game;
+        return true;
     }
 
     updateSequence() {
