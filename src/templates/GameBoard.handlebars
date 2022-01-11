@@ -1,24 +1,27 @@
 <div class="board-wrapper">
-    <div class="board" id="{{id}}">
+    <div class="board" id="b{{id}}">
         <div>
-            <div></div>
-                {{#each cols}}
-                {{/each}}
-            <div></div>
+            <div class="border-square"></div>
+            {{#each cols}}
+                <div class="border-square"></div>
+            {{/each}}
+            <div class="border-square"></div>
         </div>
         {{#each rows}}
             <div class="board-row" data-row="{{@index}}">
-                <div></div>
+                <div class="border-square"></div>
                     {{#each cols}}
+                        <div class="square" data-col="{{@index}}"></div>
                     {{/each}}
-                <div></div>
+                <div class="border-square"></div>
             </div>
         {{/each}}
         <div>
-            <div></div>
-                {{#each cols}}
-                {{/each}}
-            <div></div>
+            <div class="border-square"></div>
+            {{#each cols}}
+                <div class="border-square"></div>
+            {{/each}}
+            <div class="border-square"></div>
         </div>
         <canvas class="loading-indicator"></canvas>
     </div>

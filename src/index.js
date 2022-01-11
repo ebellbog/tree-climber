@@ -118,7 +118,7 @@ $(document).ready(() => {
     // Hook up context menu
 
     $('body').on('click', () => {
-        $('.context-menu').hide();
+        firstBoard.clearMenus();
     });
 
     // Reset & start game
@@ -204,8 +204,9 @@ class BishopsBoard {
 
         this.$stats = $('<div class="board-stats bg-blur"></div>');
         this.$menu = $('.context-menu:last').clone();
+        this.$menuBtn = $('<div class="menu-btn btn"><i class="fa fa-plus-circle"><i></div>');
 
-        this.$boardWrapper = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats, this.$menu);
+        this.$boardWrapper = $('<div class="board-wrapper"></div>').append(this.$board, this.$stats, this.$menu, this.$menuBtn);
 
         for (let r = -1; r <= rows; r++) {
             const $row = $('<div></div>');
@@ -229,6 +230,35 @@ class BishopsBoard {
     }
 
     hookEvents() {
+        const handleContextMenu = (e, dynamicPosition = true) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.dragging = false;
+            this.clearMenus();
+
+            let topOffset = '', leftOffset = '';
+            if (dynamicPosition) {
+                const $target = $(e.target);
+                const {offsetX, offsetY} = e
+                const {top, left} = $target.position();
+
+                topOffset = offsetY + top;
+                leftOffset = offsetX + left;
+            }
+            this.$menu.css({
+                display: 'block',
+                top: topOffset,
+                left: leftOffset,
+            });
+
+            this.$boardWrapper.toggleClass('clicked-menu', !dynamicPosition);
+        };
+
+        this.$boardWrapper.on('click', '.menu-btn', (e) => {
+            handleContextMenu(e, false);
+        });
+
         this.$board
             .on('mouseover', '.square', ({currentTarget}) => {
                 const $square = $(currentTarget);
@@ -250,24 +280,10 @@ class BishopsBoard {
                 }
                 this.clearSelection();
             })
-            .on('contextmenu', (e) => {
-                e.preventDefault();
-                this.dragging = false;
-
-                $('.context-menu').hide();
-
-                const $target = $(e.target);
-                const {offsetX, offsetY} = e
-                const {top, left} = $target.position();
-
-                this.$menu.css({
-                    display: 'block',
-                    left: offsetX + left,
-                    top: offsetY + top
-                });
-            })
+            .on('contextmenu', handleContextMenu)
             .on('click', '.square.white, .square.black', (e) => { // i.e. an occupied square
                 e.stopPropagation();
+                this.clearMenus();
 
                 const $square = $(e.currentTarget);
 
@@ -340,7 +356,7 @@ class BishopsBoard {
                 default:
                     break;
             }
-            this.$menu.hide();
+            this.clearMenus();
             return false;
         })
 
@@ -354,6 +370,11 @@ class BishopsBoard {
         $('body')
             .find(classesToRemove.map((c) => `.${c}`).join(','))
             .removeClass(classesToRemove.join(' '));
+    }
+
+    clearMenus() {
+        $('body').find('.clicked-menu').removeClass('clicked-menu');
+        $('.context-menu').hide();
     }
 
     highlightMoves($square) {

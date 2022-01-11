@@ -338,7 +338,7 @@ body {
 
     &.show-stats {
         .board-wrapper {
-            margin: 0 64px;
+            margin: 0 72px;
 
             &:first-child {
                 margin-left: 100px;
@@ -419,7 +419,7 @@ body {
     display: inline-block;
     position: relative;
 
-    margin: 0 24px;
+    margin: 0 36px;
 
     .board-stats {
         display: none;
@@ -476,6 +476,36 @@ body {
             .stats-row .stats-label {
                 width: 100px;
             }
+        }
+    }
+
+    .menu-btn {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: scale(1.15) translate(100%, -50%);
+
+        opacity: 0;
+        &:hover {
+            background-color: transparent;
+        }
+    }
+
+    .board:hover ~ .menu-btn,
+    .menu-btn:hover {
+        opacity: 1;
+    }
+
+    &.clicked-menu {
+        .context-menu {
+            top: 50%;
+            left: unset;
+            right: 0;
+            transform: translateX(100%) translate(13px, 18px);
+        }
+        .menu-btn {
+            opacity: 1;
+            color: white;
         }
     }
 }
