@@ -553,11 +553,31 @@ body {
 
         background-color: fade(#333, 75%);
         border-radius: @borderRadius;
+    }
+    &.is-loading .loading-indicator {
+        display: block;
+        pointer-events: all;
+    }
+    &.loading-error::after {
+        content: attr(data-error-msg);
+        white-space: normal;
+        z-index: 2;
 
-        &.is-loading {
-            display: block;
-            pointer-events: all;
-        }
+        position: absolute;
+        top: 50%;
+        left: 0;
+        transform: translateY(-50%);
+
+        width: 100%;
+        padding: .5em;
+        box-sizing: border-box;
+
+        color: white;
+        background-color: fade(black, 50%);
+
+        font-weight: 400;
+        font-size: 1em;
+        line-height: 1.5em;
     }
 
     .border-square {

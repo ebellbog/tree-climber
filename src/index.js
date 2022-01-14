@@ -12,6 +12,7 @@ const BOARD_MARGIN = 12; // Vertical spacing between board top/bottom & branch e
 const TREE_MARGIN = 10; // Spacing around solution tree in canvas preview
 const SOLUTION_TREE_DELAY = 850; // Milliseconds to display full tree before beginning to expand moves
 const EXPAND_MOVES_DELAY = 700; // Milliseconds between expanding successive moves of solution
+const ERROR_MSG_DELAY = 3000; // Milliseconds to display error message if solution was unsuccessful
 
 /* Globals */
 
@@ -321,28 +322,46 @@ class BishopsBoard {
             });
 
         this.$menu.on('click', '.menu-option', ({target}) => {
+            const handleError = ({noSolution, timeExpired, totalMovesExplored}) => {
+                if (!(timeExpired || noSolution)) return false;
+                let errorMsg;
+                if (totalMovesExplored === 0) errorMsg = 'No possible moves.';
+                else errorMsg = `Climbed through ${noSolution ? 'all ' : ''}${totalMovesExplored.toLocaleString('en-US')}
+                    ${timeExpired ? 'of the ' : ''}possible boards. ${noSolution ? 'No solution exists.' : 'Tree is too big to continue climbing.'}`;
+                this.$board
+                    .attr('data-error-msg', errorMsg)
+                    .addClass('loading-error');
+                setTimeout(() => {
+                    this.$board.removeClass('is-loading loading-error');
+                }, totalMovesExplored ? ERROR_MSG_DELAY : ERROR_MSG_DELAY / 3);
+                return true;
+            };
+
             switch($(target).data('action')) {
                 case 'expand':
                     this.expandMoves(this.game.getAllValidMoves());
                     break;
                 case 'hint':
-                    this.$loadingIndicator.addClass('is-loading');
-                    this.game.solveGame(this.$loadingIndicator, (winningMoves) => {
+                    this.$board.addClass('is-loading');
+                    this.game.solveGame(this.$loadingIndicator, (results) => {
+                        if (handleError(results)) return;
                         setTimeout(() => {
-                            this.$loadingIndicator.removeClass('is-loading')
-                            if (winningMoves) this.expandMoves([winningMoves[0]]);
+                            this.$board.removeClass('is-loading');
+                            this.expandMoves([results.winningMoves[0]]);
                         }, SOLUTION_TREE_DELAY);
                     });
                     break;
                 case 'solve':
-                    this.$loadingIndicator.addClass('is-loading');
-                    this.game.solveGame(this.$loadingIndicator, (winningMoves) => {
+                    this.$board.addClass('is-loading');
+                    this.game.solveGame(this.$loadingIndicator, (results) => {
                         setTimeout(() => {
-                            this.$loadingIndicator.removeClass('is-loading')
+                            if (handleError(results)) return;
 
-                            if (!winningMoves) return;
+                            this.$board.removeClass('is-loading');
 
+                            const {winningMoves} = results;
                             let index = 0, board = this;
+
                             const delayedExpand = () => {
                                 board = board.expandMoves([winningMoves[index]])[0];
                                 $stateGraph.scrollTop(getBoardTop(board.$board).y - $('#btn-bar').height());
@@ -677,30 +696,40 @@ class BishopsGame {
         }
     }
 
-    solveGame($canvas, callback) {
-        // Don't "backtrace" to games in this game's own history
-        const moveHistory = this.history.concat(this.hash)
+    /**
+     * @param {jQuery} $canvas - Canvas element where solution tree will be rendered
+     * @param {function} callback - Takes an object with the following possible properties: winningMoves, totalMovesExplored, noSolution, timeExpired
+     * @param {number} [timeout] - Optional max time duration (in seconds) before search will terminate
+     */
+    solveGame($canvas, callback, timeout = 15) {
+        const moveHistory = this.history.concat(this.hash) // Don't "backtrack" to games in this game's own history
             .reduce((acc, hash) => Object.assign(acc, {[hash]: '[]'}), {});
+        let winningMoves, totalMovesExplored = 0;
 
-        let winningMoves, leaves = [this];
         const tree = [
             [{children: []}]
         ];
+        let leaves = [this];
+
+        let startTime = Date.now();
 
         const solveNextLayer = () => {
-            if (!leaves.length) return callback(false);
+            if (!leaves.length) return callback({noSolution: true, totalMovesExplored});
 
             const newLeaves = [];
             let treeIndex = 0;
             for (let i = 0; i < leaves.length; i++) {
                 const possibleGames = leaves[i].getPossibleGames();
                 for (let j = 0; j < possibleGames.length; j++) {
+                    if ((Date.now() - startTime) / 1000 > timeout) return callback ({timeExpired: true, totalMovesExplored});
+
                     const possibleGame = possibleGames[j];
                     if (moveHistory[possibleGame.hash]) continue; // If already exists in solution history, this isn't the shortest path
 
                     possibleGame.analyzeGame();
 
                     newLeaves.push(possibleGame);
+                    totalMovesExplored++;
 
                     tree[tree.length - 1][i].children.push(treeIndex);
                     treeIndex++;
@@ -718,7 +747,7 @@ class BishopsGame {
             sketchTree($canvas, tree);
 
             if (winningMoves) {
-                return callback(JSON.parse(`[${winningMoves}]`).slice(1));
+                return callback({winningMoves: JSON.parse(`[${winningMoves}]`).slice(1), totalMovesExplored});
             }
 
             leaves = newLeaves;
