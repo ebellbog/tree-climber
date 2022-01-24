@@ -106,6 +106,7 @@ body .prior-color {
   font-size: 14px;
   font-weight: 400;
   font-family: 'Titillium Web', sans-serif;
+  color: black;
 }
 #settings .settings-header {
   position: relative;
@@ -226,6 +227,12 @@ body .prior-color {
   background-color: white;
   color: black;
 }
+@media screen and (max-width: 400px) {
+  #settings {
+    width: 100%;
+    left: -100%;
+  }
+}
 #state-graph {
   position: relative;
   height: 100vh;
@@ -247,7 +254,7 @@ body .prior-color {
   display: block;
 }
 #state-graph.show-stats .board-wrapper {
-  margin: 0 64px;
+  margin: 0 72px;
 }
 #state-graph.show-stats .board-wrapper:first-child {
   margin-left: 100px;
@@ -307,7 +314,7 @@ body .prior-color {
 .board-wrapper {
   display: inline-block;
   position: relative;
-  margin: 0 24px;
+  margin: 0 36px;
 }
 .board-wrapper .board-stats {
   display: none;
@@ -350,6 +357,30 @@ body .prior-color {
 }
 .board-wrapper .board-stats:hover .stats-row .stats-label {
   width: 100px;
+}
+.board-wrapper .menu-btn {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: scale(1.15) translate(100%, -50%);
+  opacity: 0;
+}
+.board-wrapper .menu-btn:hover {
+  background-color: transparent;
+}
+.board-wrapper .board:hover ~ .menu-btn,
+.board-wrapper .menu-btn:hover {
+  opacity: 1;
+}
+.board-wrapper.clicked-menu .context-menu {
+  top: 50%;
+  left: unset;
+  right: 0;
+  transform: translateX(100%) translate(13px, 18px);
+}
+.board-wrapper.clicked-menu .menu-btn {
+  opacity: 1;
+  color: white;
 }
 .board {
   display: inline-block;
@@ -394,9 +425,28 @@ body .prior-color {
   background-color: rgba(51, 51, 51, 0.75);
   border-radius: 3px;
 }
-.board .loading-indicator.is-loading {
+.board.is-loading .loading-indicator {
   display: block;
   pointer-events: all;
+}
+.board.loading-error::after {
+  content: attr(data-error-msg);
+  white-space: normal;
+  z-index: 2;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 100%;
+  padding: 0.5em;
+  box-sizing: border-box;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  font-weight: 400;
+  font-size: 1em;
+  line-height: 1.5em;
 }
 .board .border-square {
   display: none;
@@ -456,7 +506,7 @@ body .prior-color {
 }
 .board .square.prior-connected-move {
   background-color: gold !important;
-  cursor: pointer;
+  cursor: help;
 }
 .board .square.prior-explored-move {
   background: repeating-linear-gradient(-45deg, gold, gold 1px, rgba(0, 0, 0, 0.25) 1px, rgba(0, 0, 0, 0.25) 3.5px);

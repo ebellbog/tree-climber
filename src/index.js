@@ -979,7 +979,7 @@ function updateConnections(specificConnections) {
 function updateMoveLabels() {
     Object.values(connections).forEach(({startBoard, startLabel, endBoard, endLabel, $label}) => {
         const indexDelta = endBoard.game.index - startBoard.game.index;
-        const direction = (indexDelta > 0) ? '→' : (indexDelta === 0) ? '–' : '←';
+        const direction = (indexDelta > 0) ? '&#8594;' : (indexDelta === 0) ? '-' : '&#8592;';
         $label.html(`${startLabel} ${direction} ${endLabel}`);
     });
 }
