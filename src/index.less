@@ -159,6 +159,8 @@ body {
         font-size: 14px;
         font-weight: 400;
         font-family: @defaultFont;
+
+        color: black;
     }
 
     .settings-header {
@@ -307,6 +309,11 @@ body {
                 color: black;
             }
         }
+    }
+
+    @media screen and (max-width: 400px) {
+        width: 100%;
+        left: -100%;
     }
 }
 
@@ -573,7 +580,10 @@ body {
         box-sizing: border-box;
 
         color: white;
-        background-color: fade(black, 50%);
+        background-color: fade(black, 55%);
+
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
 
         font-weight: 400;
         font-size: 1em;
@@ -649,7 +659,7 @@ body {
         }
         &.prior-connected-move {
             background-color: @priorColor!important;
-            cursor: pointer;
+            cursor: help;
         }
         &.prior-explored-move {
             background: repeating-linear-gradient(

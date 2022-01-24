@@ -82,8 +82,10 @@ $(document).ready(() => {
         updateConnections();
     });
     $('#show-pieces').on('change', function() {
-        showPieces = this.value;
-        resetGame();
+        if (confirmChange(showPieces, $(this))) {
+            showPieces = this.value;
+            resetGame();
+        }
     });
     $('#draw-branches').on('change', function() {
         drawBranches = this.checked;
@@ -93,14 +95,18 @@ $(document).ready(() => {
 
     $('#num-rows').on('change', function() {
         const newRows = parseInt(this.value);
-        if (newRows !== numRows) {
+        if (newRows === numRows) return;
+
+        if (confirmChange(numRows, $(this))) {
             numRows = newRows;
             resetGame();
         }
     });
     $('#num-cols').on('change', function() {
         const newCols = parseInt(this.value);
-        if (newCols !== numCols) {
+        if (newCols === numCols) return;
+
+        if (confirmChange(numCols, $(this))) {
             numCols = newCols;
             resetGame();
         }
@@ -125,6 +131,19 @@ $(document).ready(() => {
     // Reset & start game
 
     resetGame();
+
+    // Handle device type
+
+    if (!isMobileDevice()) {
+        $('#show-moves, #show-stats').trigger('click');
+        setTimeout(() => $('body').addClass('show-settings'), 250);
+    }
+
+    $('#state-graph').on('click', () => {
+        if (isMobileDevice()) {
+            $('body').removeClass('show-settings');
+        }
+    })
 });
 
 // Cache these values for a very minor optimization when dragging
@@ -162,6 +181,14 @@ function resetGame() {
 
     firstBoard.game.updatePriors();
     firstBoard.renderStats();
+}
+
+function confirmChange(oldValue, $el) {
+    if (Object.keys(boards).length > 1 && !confirm('Changing this setting will reset the game. Are you sure you want to proceed?')) {
+        $el.val(oldValue);
+        return false;
+    }
+    return true;
 }
 
 /* DOM methods */
@@ -302,11 +329,12 @@ class BishopsBoard {
                 const move = [this.selectedSquare, this.getCoords($destSquare)];
                 this.expandMoves([move]);
             })
-            .on('mousedown', (e) => {
+            .on('mousedown touchstart', (e) => {
                 this.myConnections = this.getMyConnections();
                 this.dragging = {x: e.pageX, y: e.pageY};
             })
-            .on('mousemove', (e) => {
+            .on('mousemove touchmove', (e) => {
+                e.preventDefault();
                 if (this.dragging) {
                     this.$boardWrapper.css({
                         left: `+=${e.pageX - this.dragging.x}`,
@@ -316,7 +344,8 @@ class BishopsBoard {
                     updateConnections(this.myConnections);
                 }
             })
-            .on('mouseup', () => {
+            .on('mouseup touchend', (e) => {
+                this.$board.trigger('blur');
                 this.dragging = false;
                 updateLayout();
             });
@@ -1055,4 +1084,15 @@ function getBoardBottom($board) {
         x: left + scrollLeft + width/2,
         y: top + scrollTop + height + BOARD_MARGIN
     };
+}
+
+function isMobileDevice() {
+    return (navigator.userAgent.match(/Android/i)
+        || navigator.userAgent.match(/webOS/i)
+        || navigator.userAgent.match(/iPhone/i)
+        || navigator.userAgent.match(/iPad/i)
+        || navigator.userAgent.match(/iPod/i)
+        || navigator.userAgent.match(/BlackBerry/i)
+        || navigator.userAgent.match(/Windows Phone/i)
+    ) ? true : false
 }
