@@ -1,6 +1,7 @@
 body {
   margin: 0;
   padding: 0;
+  overflow: hidden;
   background-color: #497e5e;
   font-family: 'Titillium Web', sans-serif;
   font-weight: 200;
@@ -239,6 +240,7 @@ body .prior-color {
   width: 100vw;
   overflow: scroll;
   padding-top: 20px;
+  padding-bottom: 30px;
   box-sizing: border-box;
 }
 #state-graph.show-moves .board {

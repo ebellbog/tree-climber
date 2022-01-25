@@ -44,7 +44,15 @@ $(document).ready(() => {
 
     // Hook up window events
 
-    $(window).on('resize', () => updateConnections());
+    $(window)
+        .on('resize', () => updateConnections())
+        .on('orientationchange', () =>
+            setTimeout(() => {
+                updateLayout();
+                updateScroll();
+                updateConnections();
+            }, 400)
+        );
 
     $stateGraph.on('scroll', updateScroll);
     updateScroll();
@@ -299,7 +307,7 @@ class BishopsBoard {
                 if (this.selectedSquare) {
                     return;
                 }
-                this.highlightMoves($(currentTarget));
+                this.highlightMoves($square);
             })
             .on('mouseout', '.square', () => {
                 if (this.selectedSquare) {
@@ -328,6 +336,9 @@ class BishopsBoard {
                 const $destSquare = $(currentTarget);
                 const move = [this.selectedSquare, this.getCoords($destSquare)];
                 this.expandMoves([move]);
+            })
+            .on('click', '.prior-connected-move', (e) => {
+                e.stopPropagation(); // Leave prior connection & label highlighted, for improved mobile usability
             })
             .on('mousedown touchstart', (e) => {
                 this.myConnections = this.getMyConnections();
