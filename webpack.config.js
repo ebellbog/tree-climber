@@ -10,7 +10,7 @@ function getPlugins(mode) {
             $: 'jquery',
         }),
         new HtmlWebpackPlugin({
-            template: path.resolve(__dirname, 'src/index.html'),
+            template: path.resolve(__dirname, 'src/html/index.html'),
             filename: path.resolve(__dirname, 'index.html'),
         })
     ];
@@ -34,7 +34,7 @@ module.exports = (env, argv) => {
             port: 9000
         },
         devtool: 'eval-cheap-module-source-map',
-        entry: './src/index.js',
+        entry: './src/js/index.js',
         output: {
             filename: 'bundle.js',
             path: path.resolve(__dirname, argv.mode === 'production' ? 'dist' : ''),
